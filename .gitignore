@@ -1,0 +1,19 @@
+# segredos — nunca commite o .env real
+.env
+!.env.example
+
+# backend
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/uploads/
+backend/.env
+
+# frontend
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+frontend/.env.*.local
+
+# docker
+*.log

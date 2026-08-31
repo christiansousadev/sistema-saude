@@ -1,0 +1,27 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+env/
+
+# secrets e db local
+.env
+.env.local
+*.db
+*.sqlite3
+
+# logs
+logs/
+*.log
+
+# uploads locais
+uploads/

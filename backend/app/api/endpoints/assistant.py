@@ -3,10 +3,11 @@ import logging
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import CurrentUser
+from app.core.limiter import limiter
 from app.core.security import decrypt_api_key
 from app.db.models import ApiConfiguration, ClinicalTest, EngineMode, PhysicalEvolution
 from app.db.session import get_db
@@ -124,7 +125,9 @@ def _local_rule_based_response(message: str, context: dict[str, Any]) -> str:
 
 
 @router.post("/chat", response_model=AssistantChatResponse)
+@limiter.limit("15/minute")
 def chat_with_assistant(
+    request: Request,
     payload: AssistantChatRequest,
     current_user: CurrentUser,
     db: Annotated[Session, Depends(get_db)],
@@ -150,7 +153,8 @@ def chat_with_assistant(
             try:
                 from openai import OpenAI
 
-                client_kwargs: dict[str, Any] = {"api_key": api_key}
+                # timeout e retries evitam travar o request se o provedor externo demorar
+                client_kwargs: dict[str, Any] = {"api_key": api_key, "timeout": 30.0, "max_retries": 2}
                 if config.base_url:
                     client_kwargs["base_url"] = config.base_url
 

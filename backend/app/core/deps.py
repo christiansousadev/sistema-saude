@@ -36,21 +36,14 @@ def _extract_token(request: Request) -> str | None:
     return None
 
 
-# RESOLVE USUARIO AUTENTICADO A PARTIR DO JWT (cookie ou header)
-def get_current_user(
-    request: Request,
-    db: DBSession,
-) -> User:
+# RESOLVE USUARIO A PARTIR DE UM TOKEN JA EXTRAIDO — compartilhado com rotas
+# que não passam pelo Depends padrão (ex: serve_upload em main.py, sessão própria)
+def resolve_user_from_token(token: str, db: Session) -> User:
     unauthorized = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="credenciais inválidas",
         headers={"WWW-Authenticate": "Bearer"},
     )
-
-    token = _extract_token(request)
-    if not token:
-        logger.warning({"event": "auth_failed", "reason": "no_token"})
-        raise unauthorized
 
     payload = decode_access_token(token)
     if payload is None:
@@ -80,6 +73,23 @@ def get_current_user(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="usuário inativo")
 
     return user
+
+
+# RESOLVE USUARIO AUTENTICADO A PARTIR DO JWT (cookie ou header)
+def get_current_user(
+    request: Request,
+    db: DBSession,
+) -> User:
+    token = _extract_token(request)
+    if not token:
+        logger.warning({"event": "auth_failed", "reason": "no_token"})
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="credenciais inválidas",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return resolve_user_from_token(token, db)
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]

@@ -4,55 +4,12 @@ import { FormEvent, useEffect, useState } from 'react'
 
 import { extractErrorMessage } from '@/lib/api'
 import * as configService from '@/lib/services/configService'
+import { LLM_PROVIDERS, LOCAL_PROVIDERS, type LlmProvider } from '@/lib/constants/llm-providers'
 import type { ApiConfiguration, EngineMode } from '@/types'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import Spinner from '@/components/ui/Spinner'
-
-// ─── presets de provedores ────────────────────────────────────────────────────
-
-interface Provider {
-  label: string
-  base_url: string | null
-  models: string[]
-}
-
-const LLM_PROVIDERS: Provider[] = [
-  {
-    label: 'OpenAI',
-    base_url: null,
-    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
-  },
-  {
-    label: 'Google Gemini',
-    base_url: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-    models: ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'],
-  },
-  {
-    label: 'Custom (OpenAI-compatível)',
-    base_url: '',
-    models: [],
-  },
-]
-
-const LOCAL_PROVIDERS: Provider[] = [
-  {
-    label: 'Ollama (padrão)',
-    base_url: 'http://localhost:11434/v1',
-    models: ['llama3.2', 'mistral', 'llava'],
-  },
-  {
-    label: 'LM Studio',
-    base_url: 'http://localhost:1234/v1',
-    models: [],
-  },
-  {
-    label: 'Custom',
-    base_url: '',
-    models: [],
-  },
-]
 
 // ─── página ───────────────────────────────────────────────────────────────────
 
@@ -61,7 +18,8 @@ export default function SettingsPage() {
   const [loadingConfig, setLoadingConfig] = useState(true)
 
   const [engineMode, setEngineMode] = useState<EngineMode>('llm')
-  const [provider, setProvider] = useState<Provider>(LLM_PROVIDERS[0])
+  const [provider, setProvider] = useState<LlmProvider>(LLM_PROVIDERS[0])
+  // nunca é pré-preenchido com a chave vinda do backend — só o placeholder indica que já existe uma
   const [apiKey, setApiKey] = useState('')
   const [modelName, setModelName] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
@@ -75,7 +33,6 @@ export default function SettingsPage() {
       if (cfg) {
         setCurrent(cfg)
         setEngineMode(cfg.engine_mode)
-        setApiKey(cfg.api_key ?? '')
         setModelName(cfg.model_name)
         setBaseUrl(cfg.base_url ?? '')
         // identifica o provider pelo base_url
@@ -86,10 +43,10 @@ export default function SettingsPage() {
     }).finally(() => setLoadingConfig(false))
   }, [])
 
-  function selectProvider(p: Provider) {
+  function selectProvider(p: LlmProvider) {
     setProvider(p)
     if (p.base_url !== '') setBaseUrl(p.base_url ?? '')
-    if (p.models.length) setModelName(p.models[0])
+    if (p.models.length) setModelName(p.models[0].value)
   }
 
   function handleEngineChange(mode: EngineMode) {
@@ -97,7 +54,7 @@ export default function SettingsPage() {
     const providers = mode === 'llm' ? LLM_PROVIDERS : LOCAL_PROVIDERS
     setProvider(providers[0])
     setBaseUrl(providers[0].base_url ?? '')
-    setModelName(providers[0].models[0] ?? '')
+    setModelName(providers[0].models[0]?.value ?? '')
     if (mode === 'local') setApiKey('')
   }
 
@@ -228,7 +185,7 @@ export default function SettingsPage() {
               label="Modelo"
               value={modelName}
               onChange={(e) => setModelName(e.target.value)}
-              options={provider.models.map((m) => ({ value: m, label: m }))}
+              options={provider.models}
             />
           ) : (
             <Input
@@ -247,9 +204,9 @@ export default function SettingsPage() {
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-..."
+              placeholder={current?.model_name ? '•••••••••••• (deixe em branco para manter)' : 'sk-...'}
               autoComplete="off"
-              helpText="Sua chave é armazenada no banco de dados do servidor."
+              helpText="Sua chave é armazenada criptografada — nunca é reexibida no navegador."
             />
           )}
         </div>

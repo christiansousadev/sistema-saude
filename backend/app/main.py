@@ -9,20 +9,15 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.api.router import api_router
 from app.config import settings
-from app.core.security import decode_access_token
-from app.db.models import RefreshToken, User
+from app.core.deps import _extract_token, resolve_user_from_token
+from app.core.limiter import limiter
+from app.db.models import RefreshToken
 from app.db.session import SessionLocal
-
-
-# ─── RATE LIMITER GLOBAL ──────────────────────────────────────────────────────
-
-limiter = Limiter(key_func=get_remote_address)
 
 
 # ─── CONFIGURA LOGGING ESTRUTURADO ────────────────────────────────────────────
@@ -199,14 +194,9 @@ def serve_upload(
     if not re.match(r"^[a-zA-Z0-9_\-\.]+$", filename):
         raise HTTPException(status_code=400, detail="nome de arquivo inválido")
 
-    # S-1: extrai o token do cookie HttpOnly (frontend web) ou do header Authorization (clientes de API)
+    # S-1: reaproveita a mesma extração/validação de token usada nas rotas protegidas (core/deps)
     # <img> e <Image> enviam o cookie automaticamente para same-site requests
-    jwt_token = request.cookies.get("ss_access_token")
-    if not jwt_token:
-        auth_header = request.headers.get("authorization", "")
-        if auth_header.startswith("Bearer "):
-            jwt_token = auth_header.removeprefix("Bearer ").strip()
-
+    jwt_token = _extract_token(request)
     if not jwt_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -214,16 +204,9 @@ def serve_upload(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    payload = decode_access_token(jwt_token)
-    if not payload:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="token inválido")
-
-    email = payload.get("sub")
     db = SessionLocal()
     try:
-        user = db.query(User).filter(User.email == email).first()
-        if not user or not user.is_active:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="usuário inválido")
+        user = resolve_user_from_token(jwt_token, db)
 
         # verifica que o arquivo pertence ao usuário autenticado
         # subfolder tem formato "physical/{user_id}" ou "clinical/{user_id}"

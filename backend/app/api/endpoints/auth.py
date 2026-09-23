@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.deps import CurrentUser
+from app.core.limiter import limiter
 from app.core.security import (
     REFRESH_TOKEN_EXPIRE_DAYS,
     create_access_token,
@@ -126,28 +127,16 @@ def register(
 
 # AUTENTICA USUARIO — define cookie HttpOnly com JWT curto + refresh token (M-5a)
 # limitado a 10 tentativas por minuto por IP (C-4)
+# decorator aplicado direto na rota — uma função aninhada redecorada a cada request
+# acumulava um registro de limite novo por chamada e inflava a contagem real
 @router.post("/login", status_code=status.HTTP_200_OK)
+@limiter.limit("10/minute")
 def login(
     request: Request,
     response: Response,
     payload: UserLogin,
     db: Annotated[Session, Depends(get_db)],
 ):
-    from app.main import limiter
-
-    # aplica rate limit: 10 tentativas por minuto por IP
-    @limiter.limit("10/minute")
-    def _check_rate(request: Request):
-        pass
-
-    try:
-        _check_rate(request)
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="muitas tentativas de login — aguarde 1 minuto",
-        )
-
     try:
         user = db.query(User).filter(User.email == payload.email).first()
 

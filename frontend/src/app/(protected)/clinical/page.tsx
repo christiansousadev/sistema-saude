@@ -1,6 +1,6 @@
 'use client'
 
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, memo, useCallback, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -118,8 +118,9 @@ function FallbackForm({
 }
 
 // ─── card de exame histórico ──────────────────────────────────────────────────
+// memo evita re-render de toda a lista a cada tecla digitada no formulário ao lado
 
-function ClinicalCard({
+const ClinicalCard = memo(function ClinicalCard({
   record,
   onUpdated,
   onDelete,
@@ -278,45 +279,29 @@ function ClinicalCard({
       {record.notes && <p className="text-xs text-slate-400 italic">{record.notes}</p>}
     </div>
   )
-}
+})
 
-// ─── página ───────────────────────────────────────────────────────────────────
+// ─── formulário de novo exame ──────────────────────────────────────────────────
+// isolado em componente próprio: recordedAt/notes/file/etc ficam fora de ClinicalPage,
+// então digitar aqui não re-renderiza a lista de histórico ao lado
 
-// B-1: NOW como função lazy no useState para evitar hydration mismatch
-export default function ClinicalPage() {
+function NewExamForm({
+  onCreated,
+}: {
+  onCreated: (created: ClinicalResponse) => void
+}) {
   const router = useRouter()
 
-  // form
   // B-1: recordedAt inicializado com lazy initializer para evitar hydration mismatch
   const [recordedAt, setRecordedAt] = useState(() => new Date().toISOString().slice(0, 16))
   const [notes, setNotes] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-  const [justCreated, setJustCreated] = useState<ClinicalResponse | null>(null)
-  const [showFallbackOnNew, setShowFallbackOnNew] = useState(false)
-
-  // M-4: paginação com hook usePagination
-  const pagination = usePagination<ClinicalResponse>({
-    fetcher: (skip, limit) => clinicalService.listClinical(skip, limit),
-    pageSize: 20,
-  })
-
-  function updateRecord(updated: ClinicalResponse) {
-    pagination.updateItem((r) => r.id === updated.id, () => updated)
-    if (justCreated?.id === updated.id) setJustCreated(updated)
-  }
-
-  function handleDelete(id: number) {
-    pagination.removeItem((r) => r.id === id)
-    if (justCreated?.id === id) setJustCreated(null)
-  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError(null)
-    setJustCreated(null)
-    setShowFallbackOnNew(false)
     setSubmitting(true)
 
     const fd = new FormData()
@@ -335,15 +320,94 @@ export default function ClinicalPage() {
         return
       }
 
-      // M-4: adiciona no início sem refetch
-      pagination.prependItem(created)
-      setJustCreated(created)
+      onCreated(created)
     } catch (err) {
       setFormError(extractErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
   }
+
+  return (
+    <>
+      <h2 className="font-semibold text-slate-800 dark:text-slate-200">Novo Exame</h2>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <FileUpload
+          label="Arquivo do exame (PDF ou imagem)"
+          accept=".pdf,.jpg,.jpeg,.png"
+          maxMB={10}
+          onChange={setFile}
+        />
+
+        <Input
+          label="Data do exame"
+          type="datetime-local"
+          value={recordedAt}
+          onChange={(e) => setRecordedAt(e.target.value)}
+          required
+        />
+
+        <Textarea
+          label="Observações"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Médico solicitante, contexto do exame..."
+          rows={2}
+        />
+
+        {formError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+            {formError}
+          </div>
+        )}
+
+        <Button type="submit" loading={submitting} className="w-full">
+          Enviar e extrair dados
+        </Button>
+      </form>
+    </>
+  )
+}
+
+// ─── página ───────────────────────────────────────────────────────────────────
+
+export default function ClinicalPage() {
+  const [justCreated, setJustCreated] = useState<ClinicalResponse | null>(null)
+  const [showFallbackOnNew, setShowFallbackOnNew] = useState(false)
+
+  // M-4: paginação com hook usePagination
+  const pagination = usePagination<ClinicalResponse>({
+    fetcher: (skip, limit) => clinicalService.listClinical(skip, limit),
+    pageSize: 20,
+  })
+
+  // identidades estáveis — evitam que ClinicalCard memoizado re-renderize à toa
+  const updateRecord = useCallback(
+    (updated: ClinicalResponse) => {
+      pagination.updateItem((r) => r.id === updated.id, () => updated)
+      setJustCreated((prev) => (prev?.id === updated.id ? updated : prev))
+    },
+    [pagination.updateItem],
+  )
+
+  const handleDelete = useCallback(
+    (id: number) => {
+      pagination.removeItem((r) => r.id === id)
+      setJustCreated((prev) => (prev?.id === id ? null : prev))
+    },
+    [pagination.removeItem],
+  )
+
+  const handleCreated = useCallback(
+    (created: ClinicalResponse) => {
+      // M-4: adiciona no início sem refetch
+      pagination.prependItem(created)
+      setJustCreated(created)
+      setShowFallbackOnNew(false)
+    },
+    [pagination.prependItem],
+  )
 
   return (
     <div className="space-y-6">
@@ -357,42 +421,7 @@ export default function ClinicalPage() {
       <div className="grid gap-8 lg:grid-cols-[380px_1fr]">
         {/* formulário de envio */}
         <section className="space-y-4">
-          <h2 className="font-semibold text-slate-800 dark:text-slate-200">Novo Exame</h2>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <FileUpload
-              label="Arquivo do exame (PDF ou imagem)"
-              accept=".pdf,.jpg,.jpeg,.png"
-              maxMB={10}
-              onChange={setFile}
-            />
-
-            <Input
-              label="Data do exame"
-              type="datetime-local"
-              value={recordedAt}
-              onChange={(e) => setRecordedAt(e.target.value)}
-              required
-            />
-
-            <Textarea
-              label="Observações"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Médico solicitante, contexto do exame..."
-              rows={2}
-            />
-
-            {formError && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
-                {formError}
-              </div>
-            )}
-
-            <Button type="submit" loading={submitting} className="w-full">
-              Enviar e extrair dados
-            </Button>
-          </form>
+          <NewExamForm onCreated={handleCreated} />
 
           {/* resultado após envio */}
           {justCreated && !showFallbackOnNew && (() => {

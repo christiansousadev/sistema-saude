@@ -2,10 +2,11 @@ import logging
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import CurrentUser
+from app.core.limiter import limiter
 from app.db.models import PhysicalEvolution
 from app.db.session import SessionLocal, get_db
 from app.schemas.physical import PhysicalListResponse, PhysicalResponse
@@ -50,7 +51,9 @@ def _run_ai_analysis(record_id: int, user_id: int, absolute_photo_path: str) -> 
 
 # CRIA REGISTRO DE EVOLUCAO FISICA COM FOTO — ANALISE IA EXECUTADA EM BACKGROUND (M-9)
 @router.post("/", response_model=PhysicalResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("15/minute")
 def create_physical(
+    request: Request,
     current_user: CurrentUser,
     db: Annotated[Session, Depends(get_db)],
     background_tasks: BackgroundTasks,

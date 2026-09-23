@@ -1,12 +1,14 @@
 'use client'
 
-import { type FormEvent, useState } from 'react'
+import { Suspense, type FormEvent, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
 import { useAuth } from '@/contexts/AuthContext'
 import { extractErrorMessage } from '@/lib/api'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import Spinner from '@/components/ui/Spinner'
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -21,8 +23,10 @@ function EyeIcon({ open }: { open: boolean }) {
   )
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const { login } = useAuth()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirect') ?? undefined
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -35,7 +39,8 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
     try {
-      await login(email, password)
+      // volta para a página que o usuário tentava acessar antes do redirect de login
+      await login(email, password, redirectTo)
     } catch (err) {
       setError(extractErrorMessage(err, 'e-mail ou senha incorretos'))
     } finally {
@@ -116,5 +121,21 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+// ─── PÁGINA EXPORTADA (envolve em Suspense para useSearchParams) ──────────────
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Spinner size="lg" className="text-primary-500" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   )
 }

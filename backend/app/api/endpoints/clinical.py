@@ -2,10 +2,11 @@ import logging
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import CurrentUser
+from app.core.limiter import limiter
 from app.db.models import ClinicalTest
 from app.db.session import get_db
 from app.schemas.clinical import ClinicalDataUpdate, ClinicalListResponse, ClinicalResponse
@@ -18,7 +19,9 @@ router = APIRouter(prefix="/clinical", tags=["clinical"])
 
 # CRIA EXAME CLINICO COM EXTRACAO AUTOMATICA VIA IA
 @router.post("/", response_model=ClinicalResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("15/minute")
 def create_clinical(
+    request: Request,
     current_user: CurrentUser,
     db: Annotated[Session, Depends(get_db)],
     recorded_at: Annotated[datetime, Form()],
@@ -153,7 +156,8 @@ def patch_clinical_data(
         if not record:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="exame não encontrado")
 
-        record.extracted_data = payload.extracted_data
+        # model_dump(mode="json") serializa date/etc antes de gravar no jsonb
+        record.extracted_data = payload.extracted_data.model_dump(mode="json")
         if payload.notes is not None:
             record.notes = payload.notes
         # inserção manual confirma os dados

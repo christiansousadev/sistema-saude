@@ -62,3 +62,7 @@ Thumbs.db
 .idea/
 .claude/
 .system_generated/
+
+# ─── RELATÓRIOS E AUDITORIA INTERNA ─────────────────────────
+auditoria_sistema.md
+

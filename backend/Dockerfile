@@ -27,6 +27,7 @@ FROM python:3.12-slim AS runner
 WORKDIR /app
 
 # apenas as libs compartilhadas em runtime (sem -dev)
+# tesseract-ocr + pacote de idioma pt habilitam o engine LOCAL a ler texto de imagem
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         libjpeg62-turbo \
@@ -35,6 +36,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libwebp7 \
         libopenjp2-7 \
         libmagic1 \
+        tesseract-ocr \
+        tesseract-ocr-por \
     && rm -rf /var/lib/apt/lists/*
 
 # pacotes Python compilados no stage anterior

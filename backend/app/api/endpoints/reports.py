@@ -66,16 +66,17 @@ def get_medical_summary(
             created_at=current_user.created_at,
         )
 
-        # 2. Registros físicos
-        physicals = (
-            db.query(PhysicalEvolution)
-            .filter(PhysicalEvolution.user_id == current_user.id)
-            .order_by(PhysicalEvolution.recorded_at.asc())
-            .all()
+        # 2. Registros físicos — busca só total/primeiro/último, sem carregar o histórico inteiro
+        physical_base_q = db.query(PhysicalEvolution).filter(
+            PhysicalEvolution.user_id == current_user.id
         )
-
-        first_rec = physicals[0] if physicals else None
-        latest_rec = physicals[-1] if physicals else None
+        total_physicals = physical_base_q.count()
+        first_rec = physical_base_q.order_by(PhysicalEvolution.recorded_at.asc()).first()
+        latest_rec = (
+            physical_base_q.order_by(PhysicalEvolution.recorded_at.desc()).first()
+            if total_physicals > 1
+            else first_rec
+        )
 
         latest_imc = None
         if latest_rec and latest_rec.weight_kg and current_user.height_cm:
@@ -91,7 +92,7 @@ def get_medical_summary(
             delta_fat = round(latest_rec.body_fat_pct - first_rec.body_fat_pct, 1)
 
         physical_summary = PhysicalSummaryReport(
-            total_records=len(physicals),
+            total_records=total_physicals,
             first_record_date=first_rec.recorded_at if first_rec else None,
             latest_record_date=latest_rec.recorded_at if latest_rec else None,
             first_weight_kg=first_rec.weight_kg if first_rec else None,
@@ -106,17 +107,16 @@ def get_medical_summary(
             latest_ai_analysis=latest_rec.ai_analysis if latest_rec else None,
         )
 
-        # 3. Registros clínicos
-        clinicals = (
-            db.query(ClinicalTest)
-            .filter(ClinicalTest.user_id == current_user.id)
-            .order_by(ClinicalTest.recorded_at.desc())
-            .all()
-        )
+        # 3. Registros clínicos — só os 2 mais recentes (para deltas) + contagens agregadas
+        clinical_base_q = db.query(ClinicalTest).filter(ClinicalTest.user_id == current_user.id)
+        total_exams = clinical_base_q.count()
+        validated_count = clinical_base_q.filter(ClinicalTest.is_validated.is_(True)).count()
 
-        validated_count = sum(1 for c in clinicals if c.is_validated)
-        latest_clinical = clinicals[0] if clinicals else None
-        prev_clinical = clinicals[1] if len(clinicals) > 1 else None
+        latest_two = (
+            clinical_base_q.order_by(ClinicalTest.recorded_at.desc()).limit(2).all()
+        )
+        latest_clinical = latest_two[0] if latest_two else None
+        prev_clinical = latest_two[1] if len(latest_two) > 1 else None
 
         latest_markers_raw = (
             latest_clinical.extracted_data.get("markers", [])
@@ -151,7 +151,7 @@ def get_medical_summary(
                 })
 
         clinical_summary = ClinicalSummaryReport(
-            total_exams=len(clinicals),
+            total_exams=total_exams,
             latest_exam_date=latest_clinical.recorded_at if latest_clinical else None,
             latest_markers=enriched_markers,
             active_alerts=alerts,

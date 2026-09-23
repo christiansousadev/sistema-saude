@@ -26,12 +26,19 @@ api.interceptors.request.use(
   (error: unknown) => Promise.reject(error),
 )
 
+// rotas de sessão já têm tratamento próprio no AuthContext (silentRefresh/restore) —
+// deixar o interceptor redirecionar essas também gera corrida entre router.push e reload completo
+const _SESSION_ROUTES = ['/auth/refresh', '/auth/me']
+
 // TRATA RESPOSTAS DE ERRO GLOBALMENTE
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      // sessão expirada ou inválida → redireciona para login
+    const url = error.config?.url ?? ''
+    const isSessionRoute = _SESSION_ROUTES.some((route) => url.includes(route))
+
+    if (error.response?.status === 401 && !isSessionRoute) {
+      // sessão expirada ou inválida em uma chamada de negócio → redireciona para login
       // o cookie HttpOnly é removido pelo servidor no logout
       if (typeof window !== 'undefined') {
         window.location.replace('/login')

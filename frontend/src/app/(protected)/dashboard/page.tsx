@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 
 import { useAuth } from '@/contexts/AuthContext'
 import { extractErrorMessage } from '@/lib/api'
@@ -10,9 +11,18 @@ import * as physicalService from '@/lib/services/physicalService'
 import * as clinicalService from '@/lib/services/clinicalService'
 import type { ClinicalResponse, PhysicalResponse } from '@/types'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { CholesterolChart, ImcWeightChart } from '@/components/charts'
 import MetabolicCard from '@/components/ui/MetabolicCard'
 import HealthAssistantModal from '@/components/ui/HealthAssistantModal'
+
+// recharts é pesado — carrega só no cliente e fora do bundle inicial do dashboard
+const ImcWeightChart = dynamic(() => import('@/components/charts/ImcWeightChart'), {
+  ssr: false,
+  loading: () => <Skeleton className="h-64 w-full rounded-2xl" />,
+})
+const CholesterolChart = dynamic(() => import('@/components/charts/CholesterolChart'), {
+  ssr: false,
+  loading: () => <Skeleton className="h-64 w-full rounded-2xl" />,
+})
 
 // ─── sub-componentes ─────────────────────────────────────────────────────────
 

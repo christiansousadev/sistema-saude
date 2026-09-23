@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface UsePaginationOptions<T> {
   /** Função que busca uma página de itens */
@@ -70,13 +70,11 @@ export function usePagination<T>({
     [fetcher, pageSize],
   )
 
-  // carregamento inicial
-  const [initialized, setInitialized] = useState(false)
-  if (!initialized) {
-    setInitialized(true)
-    // dispara o carregamento inicial sem bloquear renderização
+  // carregamento inicial — roda uma vez após a montagem, nunca durante a fase de render
+  useEffect(() => {
     void load(0, false)
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const loadMore = useCallback(async () => {
     await load(skipRef.current, true)

@@ -64,7 +64,8 @@ def _build_client(config: ApiConfiguration):
     from app.core.security import decrypt_api_key
     decrypted_key = decrypt_api_key(config.api_key)
 
-    kwargs: dict = {"api_key": decrypted_key or "local"}
+    # timeout e retries evitam que um endpoint externo lento trave a thread do request indefinidamente
+    kwargs: dict = {"api_key": decrypted_key or "local", "timeout": 30.0, "max_retries": 2}
     if config.base_url:
         kwargs["base_url"] = config.base_url
     return OpenAI(**kwargs)

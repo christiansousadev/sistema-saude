@@ -73,9 +73,6 @@ export default function AiAnalysisCard({ data, defaultExpanded = false }: AiAnal
   // campos de lista
   const listEntries = LIST_FIELDS.filter(k => Array.isArray(data[k]) && (data[k] as unknown[]).length > 0)
   // marcadores clínicos
-  const markers = Array.isArray(data.markers)
-    ? data['.markers'] as Array<{ name: string; value: string | number; unit?: string; status?: string | null; reference_range?: string }>
-    : null
   const aiMarkers = Array.isArray(data.markers)
     ? data.markers as Array<{ name: string; value: string | number; unit?: string; status?: string | null; reference_range?: string }>
     : null

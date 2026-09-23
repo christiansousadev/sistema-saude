@@ -26,7 +26,7 @@ export interface RegisterPayload {
 interface AuthContextValue {
   user: UserResponse | null
   isLoading: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, redirectTo?: string) => Promise<void>
   register: (data: RegisterPayload) => Promise<void>
   logout: () => Promise<void>
 }
@@ -110,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [startRefreshTimer, stopRefreshTimer])
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, redirectTo?: string) => {
       // S-1: o servidor define o cookie HttpOnly ss_access_token na resposta
       // não precisamos extrair nem armazenar o token — o browser cuida disso
       await api.post('/auth/login', { email, password })
@@ -119,7 +119,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(me)
       // M-5a: inicia renovação automática após login
       startRefreshTimer()
-      router.push('/dashboard')
+      // só aceita destinos internos — evita open redirect via ?redirect=
+      const target = redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')
+        ? redirectTo
+        : '/dashboard'
+      router.push(target)
     },
     [router, startRefreshTimer],
   )

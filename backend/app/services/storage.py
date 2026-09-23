@@ -11,6 +11,7 @@ logger = logging.getLogger("audit.storage")
 _ALLOWED_IMAGE = {".jpg", ".jpeg", ".png", ".webp"}
 _ALLOWED_DOC = {".pdf", ".jpg", ".jpeg", ".png"}
 _MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+_CHUNK_BYTES = 1024 * 1024  # 1 MB por bloco de leitura
 
 # mapeamento extensão → MIME types aceitos para validação de conteúdo real (M-7)
 _EXT_TO_MIMES: dict[str, set[str]] = {
@@ -34,21 +35,52 @@ def _validate_mime(content: bytes, suffix: str) -> None:
     """Valida o conteúdo real do arquivo contra os MIME types permitidos para a extensão."""
     try:
         import magic
-        detected = magic.from_buffer(content, mime=True)
-        allowed = _EXT_TO_MIMES.get(suffix, set())
-        if detected not in allowed:
-            logger.warning({
-                "event": "storage_mime_rejected",
-                "detected_mime": detected,
-                "expected_suffix": suffix,
-            })
-            raise HTTPException(
-                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail=f"conteúdo do arquivo não corresponde à extensão {suffix} (detectado: {detected})",
-            )
-    except ImportError:
-        # python-magic não instalado — apenas loga o aviso, não bloqueia
-        logger.warning({"event": "storage_mime_check_skipped", "reason": "python-magic não instalado"})
+    except ImportError as exc:
+        # sem python-magic não há como validar o conteúdo real — recusa o upload em vez de degradar
+        logger.error({"event": "storage_mime_check_unavailable", "reason": "python-magic não instalado"})
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="validação de conteúdo de arquivo indisponível no servidor",
+        ) from exc
+
+    detected = magic.from_buffer(content, mime=True)
+    allowed = _EXT_TO_MIMES.get(suffix, set())
+    if detected not in allowed:
+        logger.warning({
+            "event": "storage_mime_rejected",
+            "detected_mime": detected,
+            "expected_suffix": suffix,
+        })
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"conteúdo do arquivo não corresponde à extensão {suffix} (detectado: {detected})",
+        )
+
+
+# LE O ARQUIVO EM BLOCOS E ABORTA CEDO SE ULTRAPASSAR O LIMITE
+def _read_with_limit(file: UploadFile, max_bytes: int) -> bytes:
+    """evita carregar um upload gigante inteiro na memória antes de rejeitar."""
+    chunks: list[bytes] = []
+    total = 0
+    try:
+        while True:
+            chunk = file.file.read(_CHUNK_BYTES)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > max_bytes:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"arquivo excede {max_bytes // (1024 * 1024)} MB",
+                )
+            chunks.append(chunk)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error({"event": "storage_read_error", "error": str(exc)})
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="falha ao ler arquivo")
+
+    return b"".join(chunks)
 
 
 # SALVA ARQUIVO ENVIADO PELO USUARIO EM DISCO
@@ -69,17 +101,8 @@ def save_upload(
             detail=f"extensão não permitida: {suffix}. Aceitas: {sorted(allowed_ext)}",
         )
 
-    try:
-        content = file.file.read()
-    except Exception as exc:
-        logger.error({"event": "storage_read_error", "error": str(exc)})
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="falha ao ler arquivo")
-
-    if len(content) > max_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"arquivo excede {max_bytes // (1024 * 1024)} MB",
-        )
+    # leitura em blocos com corte antecipado — não esgota memória com upload malicioso grande
+    content = _read_with_limit(file, max_bytes)
 
     # valida o conteúdo real do arquivo (M-7)
     _validate_mime(content, suffix)

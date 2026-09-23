@@ -14,10 +14,11 @@ import { type NextRequest, NextResponse } from 'next/server'
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // ── rotas protegidas: qualquer /dashboard, /physical, /clinical, /settings, /admin ──
+  // ── rotas protegidas: qualquer /dashboard, /physical, /clinical, /reports, /settings, /admin ──
   const isProtected = pathname.startsWith('/dashboard')
     || pathname.startsWith('/physical')
     || pathname.startsWith('/clinical')
+    || pathname.startsWith('/reports')
     || pathname.startsWith('/settings')
     || pathname.startsWith('/admin')
 

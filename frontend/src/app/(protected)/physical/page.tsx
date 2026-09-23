@@ -1,6 +1,6 @@
 'use client'
 
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, memo, useCallback, useState } from 'react'
 import Image from 'next/image'
 
 import { useAuth } from '@/contexts/AuthContext'
@@ -18,8 +18,9 @@ import Spinner from '@/components/ui/Spinner'
 import Textarea from '@/components/ui/Textarea'
 
 // ─── card de registro histórico ───────────────────────────────────────────────
+// memo evita re-render de toda a lista a cada tecla digitada no formulário ao lado
 
-function RecordCard({
+const RecordCard = memo(function RecordCard({
   record,
   onDelete,
 }: {
@@ -132,7 +133,7 @@ function RecordCard({
       )}
     </div>
   )
-}
+})
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
@@ -143,20 +144,17 @@ function Metric({ label, value }: { label: string; value: string }) {
   )
 }
 
-// ─── página ───────────────────────────────────────────────────────────────────
+// ─── formulário de nova medição ────────────────────────────────────────────────
+// isolado em componente próprio: o estado do formulário fica fora de PhysicalPage,
+// então digitar aqui não re-renderiza a lista de histórico ao lado
 
-// B-1: NOW como função lazy no useState para evitar hydration mismatch
-
-export default function PhysicalPage() {
-  const { user } = useAuth()
-
-  // M-4: paginação com hook usePagination — substitui estados manuais
-  const pagination = usePagination<PhysicalResponse>({
-    fetcher: (skip, limit) => physicalService.listPhysical(skip, limit),
-    pageSize: 20,
-  })
-
-  // form state
+function NewMeasurementForm({
+  heightCm,
+  onCreated,
+}: {
+  heightCm: number | null | undefined
+  onCreated: (record: PhysicalResponse) => void
+}) {
   const [recordedAt, setRecordedAt] = useState(() => new Date().toISOString().slice(0, 16))
   const [weightKg, setWeightKg] = useState('')
   const [bodyFatPct, setBodyFatPct] = useState('')
@@ -184,8 +182,7 @@ export default function PhysicalPage() {
     try {
       const created = await physicalService.createPhysical(fd)
       setLastResult(created)
-      // M-4: prependItem adiciona sem refetch
-      pagination.prependItem(created)
+      onCreated(created)
       setWeightKg('')
       setBodyFatPct('')
       setMuscleMassKg('')
@@ -198,10 +195,120 @@ export default function PhysicalPage() {
     }
   }
 
-  function handleDelete(id: number) {
-    // M-4: removeItem do hook de paginação
-    pagination.removeItem((r) => r.id === id)
-  }
+  return (
+    <section className="space-y-4">
+      <h2 className="font-semibold text-slate-800 dark:text-slate-200">Nova Medição</h2>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <FileUpload
+          label="Foto (opcional)"
+          accept=".jpg,.jpeg,.png,.webp"
+          maxMB={10}
+          preview
+          onChange={setPhoto}
+        />
+
+        <Input
+          label="Data e hora"
+          type="datetime-local"
+          value={recordedAt}
+          onChange={(e) => setRecordedAt(e.target.value)}
+          required
+        />
+
+        <div className="grid grid-cols-3 gap-3">
+          <Input
+            label="Peso"
+            type="number"
+            value={weightKg}
+            onChange={(e) => setWeightKg(e.target.value)}
+            placeholder="78.5"
+            min={20}
+            max={500}
+            step={0.1}
+            helpText="kg"
+          />
+          <Input
+            label="Gordura"
+            type="number"
+            value={bodyFatPct}
+            onChange={(e) => setBodyFatPct(e.target.value)}
+            placeholder="18.5"
+            min={1}
+            max={70}
+            step={0.1}
+            helpText="%"
+          />
+          <Input
+            label="Músculo"
+            type="number"
+            value={muscleMassKg}
+            onChange={(e) => setMuscleMassKg(e.target.value)}
+            placeholder="35.0"
+            min={5}
+            max={200}
+            step={0.1}
+            helpText="kg"
+          />
+        </div>
+
+        <Textarea
+          label="Observações"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Como foi a semana? Treinos, alimentação..."
+          rows={2}
+        />
+
+        {formError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+            {formError}
+          </div>
+        )}
+
+        <Button type="submit" loading={submitting} className="w-full">
+          Salvar medição
+        </Button>
+      </form>
+
+      {/* resultado da ia após salvar — M-3: AiAnalysisCard ao invés de JSON bruto */}
+      {lastResult?.ai_analysis && (
+        <div className="rounded-2xl border border-primary-200 bg-primary-50 p-4 dark:border-primary-800/50 dark:bg-primary-900/20">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-600 dark:text-primary-400">
+            Resultado da Análise de IA
+          </p>
+          <AiAnalysisCard
+            data={lastResult.ai_analysis as Record<string, unknown>}
+            defaultExpanded
+          />
+        </div>
+      )}
+    </section>
+  )
+}
+
+// ─── página ───────────────────────────────────────────────────────────────────
+
+// B-1: NOW como função lazy no useState para evitar hydration mismatch
+
+export default function PhysicalPage() {
+  const { user } = useAuth()
+
+  // M-4: paginação com hook usePagination — substitui estados manuais
+  const pagination = usePagination<PhysicalResponse>({
+    fetcher: (skip, limit) => physicalService.listPhysical(skip, limit),
+    pageSize: 20,
+  })
+
+  // identidade estável — evita que RecordCard memoizado re-renderize à toa
+  const handleCreated = useCallback(
+    (created: PhysicalResponse) => pagination.prependItem(created),
+    [pagination.prependItem],
+  )
+  const handleDelete = useCallback(
+    (id: number) => pagination.removeItem((r) => r.id === id),
+    [pagination.removeItem],
+  )
 
   const [isCompareOpen, setIsCompareOpen] = useState(false)
   const photoCount = pagination.items.filter((r) => Boolean(r.photo_path)).length
@@ -216,95 +323,7 @@ export default function PhysicalPage() {
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[380px_1fr]">
-        {/* formulário */}
-        <section className="space-y-4">
-          <h2 className="font-semibold text-slate-800 dark:text-slate-200">Nova Medição</h2>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <FileUpload
-              label="Foto (opcional)"
-              accept=".jpg,.jpeg,.png,.webp"
-              maxMB={10}
-              preview
-              onChange={setPhoto}
-            />
-
-            <Input
-              label="Data e hora"
-              type="datetime-local"
-              value={recordedAt}
-              onChange={(e) => setRecordedAt(e.target.value)}
-              required
-            />
-
-            <div className="grid grid-cols-3 gap-3">
-              <Input
-                label="Peso"
-                type="number"
-                value={weightKg}
-                onChange={(e) => setWeightKg(e.target.value)}
-                placeholder="78.5"
-                min={20}
-                max={500}
-                step={0.1}
-                helpText="kg"
-              />
-              <Input
-                label="Gordura"
-                type="number"
-                value={bodyFatPct}
-                onChange={(e) => setBodyFatPct(e.target.value)}
-                placeholder="18.5"
-                min={1}
-                max={70}
-                step={0.1}
-                helpText="%"
-              />
-              <Input
-                label="Músculo"
-                type="number"
-                value={muscleMassKg}
-                onChange={(e) => setMuscleMassKg(e.target.value)}
-                placeholder="35.0"
-                min={5}
-                max={200}
-                step={0.1}
-                helpText="kg"
-              />
-            </div>
-
-            <Textarea
-              label="Observações"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Como foi a semana? Treinos, alimentação..."
-              rows={2}
-            />
-
-            {formError && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
-                {formError}
-              </div>
-            )}
-
-            <Button type="submit" loading={submitting} className="w-full">
-              Salvar medição
-            </Button>
-          </form>
-
-          {/* resultado da ia após salvar — M-3: AiAnalysisCard ao invés de JSON bruto */}
-          {lastResult?.ai_analysis && (
-            <div className="rounded-2xl border border-primary-200 bg-primary-50 p-4 dark:border-primary-800/50 dark:bg-primary-900/20">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-600 dark:text-primary-400">
-                Resultado da Análise de IA
-              </p>
-              <AiAnalysisCard
-                data={lastResult.ai_analysis as Record<string, unknown>}
-                defaultExpanded
-              />
-            </div>
-          )}
-        </section>
+        <NewMeasurementForm heightCm={user?.height_cm} onCreated={handleCreated} />
 
         {/* histórico */}
         <section>

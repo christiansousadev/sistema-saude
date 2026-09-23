@@ -6,6 +6,7 @@ import Link from 'next/link'
 
 import { useAuth } from '@/contexts/AuthContext'
 import { getUserConfig, updateUserConfig } from '@/lib/services/adminService'
+import { LLM_PROVIDERS } from '@/lib/constants/llm-providers'
 import type { ApiConfiguration } from '@/types'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -19,41 +20,8 @@ const ENGINES = [
   { value: 'local', label: 'Local (OpenCV/RegEx)' },
 ]
 
-// B-5: modelos reais disponíveis em cada provedor (atualizado em 2026-06)
-const PROVIDER_MODELS: Record<string, {value: string, label: string}[]> = {
-  'OpenAI': [
-    { value: 'gpt-4o', label: 'GPT-4o' },
-    { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-    { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-    { value: 'o1-preview', label: 'o1 Preview (Reasoning)' },
-    { value: 'o1-mini', label: 'o1 Mini (Reasoning)' },
-  ],
-  'Gemini': [
-    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-    { value: 'gemini-1.5-pro-latest', label: 'Gemini 1.5 Pro' },
-    { value: 'gemini-1.5-flash-latest', label: 'Gemini 1.5 Flash' },
-    { value: 'gemini-1.5-flash-8b', label: 'Gemini 1.5 Flash 8B' },
-  ],
-  'Claude': [
-    { value: 'claude-opus-4-5', label: 'Claude Opus 4.5' },
-    { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
-    { value: 'claude-haiku-3-5', label: 'Claude Haiku 3.5' },
-  ],
-  'Grok': [
-    { value: 'grok-2-vision-1212', label: 'Grok 2 Vision' },
-    { value: 'grok-2-1212', label: 'Grok 2' },
-    { value: 'grok-vision-beta', label: 'Grok Vision Beta' },
-  ],
-  'DeepSeek': [
-    { value: 'deepseek-chat', label: 'DeepSeek Chat (V3)' },
-    { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner (R1)' },
-  ],
-  'Ollama (local)': [
-    { value: 'llama3.2-vision:11b', label: 'LLaMA 3.2 Vision 11B' },
-    { value: 'llava:13b', label: 'LLaVA 13B' },
-    { value: 'phi3:mini', label: 'Phi-3 Mini' },
-  ],
-}
+// provedores rápidos exibidos como atalho — a lista completa vive em lib/constants/llm-providers
+const QUICK_PROVIDER_KEYS = ['openai', 'gemini', 'claude', 'grok', 'deepseek']
 
 export default function AdminUserPage() {
   const { user } = useAuth()
@@ -97,27 +65,13 @@ export default function AdminUserPage() {
       .finally(() => setLoading(false))
   }, [userId, user, router])
 
-  function handleQuickProvider(provider: string) {
-    setActiveProvider(provider)
-    setModelName(PROVIDER_MODELS[provider][0].value)
+  function handleQuickProvider(providerKey: string) {
+    const provider = LLM_PROVIDERS.find((p) => p.key === providerKey)
+    if (!provider) return
 
-    switch (provider) {
-      case 'OpenAI':
-        setBaseUrl('')
-        break
-      case 'Gemini':
-        setBaseUrl('https://generativelanguage.googleapis.com/v1beta/openai/')
-        break
-      case 'Claude':
-        setBaseUrl('')
-        break
-      case 'Grok':
-        setBaseUrl('https://api.x.ai/v1')
-        break
-      case 'DeepSeek':
-        setBaseUrl('https://api.deepseek.com')
-        break
-    }
+    setActiveProvider(providerKey)
+    setModelName(provider.models[0]?.value ?? '')
+    setBaseUrl(provider.base_url ?? '')
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -191,15 +145,15 @@ export default function AdminUserPage() {
               Provedor Rápido (Auto-fill)
             </h3>
             <div className="flex flex-wrap gap-2">
-              {['OpenAI', 'Gemini', 'Claude', 'Grok', 'DeepSeek'].map((p) => (
+              {QUICK_PROVIDER_KEYS.map((key) => (
                 <button
-                  key={p}
+                  key={key}
                   type="button"
-                  onClick={() => handleQuickProvider(p)}
+                  onClick={() => handleQuickProvider(key)}
                   disabled={engineMode === 'local'}
                   className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition"
                 >
-                  {p}
+                  {LLM_PROVIDERS.find((p) => p.key === key)?.label ?? key}
                 </button>
               ))}
             </div>
@@ -220,7 +174,7 @@ export default function AdminUserPage() {
               disabled={engineMode === 'local'}
               options={
                 activeProvider
-                  ? PROVIDER_MODELS[activeProvider]
+                  ? LLM_PROVIDERS.find((p) => p.key === activeProvider)?.models ?? []
                   : [{ value: '', label: 'Selecione um provedor primeiro...' }]
               }
             />

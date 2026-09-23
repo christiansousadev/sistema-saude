@@ -51,8 +51,8 @@ class ClinicalCreate(BaseModel):
 
 
 class ClinicalDataUpdate(BaseModel):
-    # aceita dict genérico ou ExtractedDataSchema
-    extracted_data: dict
+    # exige o mesmo shape da resposta (engine/status obrigatórios) para não persistir dado incompleto
+    extracted_data: ExtractedDataSchema
     notes: str | None = None
 
 

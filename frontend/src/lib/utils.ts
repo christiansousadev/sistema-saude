@@ -37,14 +37,27 @@ export function imcCategory(imc: number): {
   label: string
   color: string
   bg: string
+  border: string
 } {
-  if (imc < 18.5) return { label: 'Abaixo do peso', color: 'text-blue-600', bg: 'bg-blue-100' }
-  if (imc < 25) return { label: 'Peso ideal', color: 'text-green-600', bg: 'bg-green-100' }
-  if (imc < 30) return { label: 'Sobrepeso', color: 'text-yellow-600', bg: 'bg-yellow-100' }
-  return { label: 'Obesidade', color: 'text-red-600', bg: 'bg-red-100' }
+  if (imc < 18.5)
+    return { label: 'Abaixo do peso', color: 'text-sky-300', bg: 'bg-sky-500/10', border: 'border-sky-500/20' }
+  if (imc < 25)
+    return { label: 'Peso ideal', color: 'text-emerald-300', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' }
+  if (imc < 30)
+    return { label: 'Sobrepeso', color: 'text-amber-300', bg: 'bg-amber-500/10', border: 'border-amber-500/20' }
+  return { label: 'Obesidade', color: 'text-rose-300', bg: 'bg-rose-500/10', border: 'border-rose-500/20' }
 }
 
 // posição (0-100%) do imc na escala visual 15-40
 export function imcBarPct(imc: number): number {
   return Math.min(100, Math.max(0, ((imc - 15) / 25) * 100))
+}
+
+// EXTRAI AS INICIAIS DE UM NOME PARA USO EM AVATARES
+export function initials(name?: string | null): string {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  const first = parts[0]?.[0] ?? ''
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : ''
+  return (first + last).toUpperCase()
 }

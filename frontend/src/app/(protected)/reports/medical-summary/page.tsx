@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { ArrowLeft, Dumbbell, FlaskConical, Printer, TriangleAlert } from 'lucide-react'
 import { getMedicalSummary } from '@/lib/services/reportService'
 import type { MedicalSummaryResponse } from '@/types'
+import { extractErrorMessage } from '@/lib/api'
 import { formatDateTime, formatDate } from '@/lib/utils'
 import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
@@ -16,29 +18,27 @@ export default function MedicalSummaryPage() {
   useEffect(() => {
     getMedicalSummary()
       .then(setReport)
-      .catch((err) => {
-        setError(err.response?.data?.detail || 'Erro ao carregar o relatório médico.')
-      })
+      .catch((err) => setError(extractErrorMessage(err, 'Erro ao carregar o relatório médico.')))
       .finally(() => setLoading(false))
   }, [])
 
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Spinner size="lg" className="text-primary-600" />
+        <Spinner size="lg" className="text-sky-400" />
       </div>
     )
   }
 
   if (error || !report) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-600 dark:border-red-900/50 dark:bg-red-900/20">
+      <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-6 text-center text-rose-300">
         <p className="font-semibold">{error || 'Relatório não disponível.'}</p>
         <Link
           href="/dashboard"
-          className="mt-4 inline-block text-sm font-medium text-primary-600 underline"
+          className="mt-4 inline-block text-sm font-medium text-sky-400 underline"
         >
-          Voltar ao Painel
+          Voltar ao painel
         </Link>
       </div>
     )
@@ -48,91 +48,95 @@ export default function MedicalSummaryPage() {
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto print:max-w-none print:m-0 print:p-0">
-      {/* Barra de Ações (Oculta na Impressão) */}
+      {/* barra de ações (oculta na impressão) */}
       <div className="flex items-center justify-between print:hidden">
         <div>
           <Link
             href="/dashboard"
-            className="text-xs font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1 mb-1"
+            className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500 transition hover:text-slate-200"
           >
-            ← Voltar ao Painel
+            <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} />
+            Voltar ao painel
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Relatório de Saúde Consolidado
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            Relatório de saúde consolidado
           </h1>
         </div>
-        <div className="flex gap-3">
-          <Button onClick={() => window.print()} className="flex items-center gap-2 shadow-md">
-            <span>🖨️</span> Imprimir / Salvar em PDF
-          </Button>
-        </div>
+        <Button onClick={() => window.print()} className="flex items-center gap-2 shadow-md">
+          <Printer className="h-4 w-4" strokeWidth={2} />
+          Imprimir / exportar PDF
+        </Button>
       </div>
 
-      {/* DOCUMENTO MÉDICO IMPRESSO (Prontuário Consolidado) */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 sm:p-12 shadow-lg dark:border-slate-800 dark:bg-slate-900 print:border-none print:shadow-none print:p-0 print:bg-white print:text-slate-900 text-slate-800 dark:text-slate-200 space-y-8">
-        {/* Cabeçalho do Prontuário */}
-        <div className="border-b border-slate-200 dark:border-slate-800 print:border-slate-300 pb-6 flex items-start justify-between">
+      {/* documento médico impresso (prontuário consolidado) */}
+      {/* fora da impressão: cartão escuro premium. na impressão: fundo branco puro, texto preto de alto contraste */}
+      <div className="rounded-3xl border border-white/[0.06] bg-slate-900/60 p-6 sm:p-8 lg:p-12 shadow-lg print:rounded-none print:border-none print:bg-white print:p-0 print:shadow-none text-slate-300 print:text-black space-y-8">
+        {/* cabeçalho do prontuário */}
+        <div className="flex flex-col gap-4 border-b border-white/[0.06] print:border-slate-300 pb-6 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 text-white font-bold text-sm">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-sky-500 text-slate-950 font-bold text-sm print:bg-black print:text-white">
                 +
               </span>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white print:text-black">
-                SISTEMA SAÚDE · PRONTUÁRIO PESSOAL
+              <h2 className="text-xl font-bold text-white print:text-black">
+                Sistema Saúde · Prontuário pessoal
               </h2>
             </div>
             <p className="text-xs text-slate-500 print:text-slate-600">
               Relatório consolidado de evolução antropométrica e exames laboratoriais
             </p>
           </div>
-          <div className="text-right text-xs text-slate-400 print:text-slate-600">
+          <div className="text-left text-xs text-slate-500 print:text-slate-600 sm:text-right">
             <p>Gerado em: {formatDateTime(report.generated_at)}</p>
             <p className="font-mono text-[10px]">Doc Ref: #{patient.email.slice(0, 6).toUpperCase()}</p>
           </div>
         </div>
 
-        {/* Identificação do Paciente */}
-        <section className="bg-slate-50 dark:bg-slate-800/40 print:bg-slate-100/70 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 print:border-slate-300">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-            Dados do Paciente
+        {/* identificação do paciente */}
+        <section className="rounded-2xl border border-white/[0.06] bg-white/[0.02] print:border-slate-300 print:bg-slate-100/70 p-5">
+          <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">
+            Dados do paciente
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
             <div>
-              <span className="text-xs text-slate-400 block">Nome Completo:</span>
-              <span className="font-semibold text-slate-900 dark:text-white print:text-black">{patient.name}</span>
+              <span className="block text-xs text-slate-500">Nome completo</span>
+              <span className="font-semibold text-white print:text-black">{patient.name}</span>
             </div>
             <div>
-              <span className="text-xs text-slate-400 block">Idade / Nascimento:</span>
-              <span className="font-semibold">
+              <span className="block text-xs text-slate-500">Idade / nascimento</span>
+              <span className="font-semibold text-slate-200 print:text-black">
                 {patient.age ? `${patient.age} anos` : '—'}
                 {patient.birth_date ? ` (${formatDate(patient.birth_date)})` : ''}
               </span>
             </div>
             <div>
-              <span className="text-xs text-slate-400 block">Altura:</span>
-              <span className="font-semibold">{patient.height_cm ? `${patient.height_cm} cm` : '—'}</span>
+              <span className="block text-xs text-slate-500">Altura</span>
+              <span className="font-semibold text-slate-200 print:text-black">
+                {patient.height_cm ? `${patient.height_cm} cm` : '—'}
+              </span>
             </div>
-            <div>
-              <span className="text-xs text-slate-400 block">E-mail:</span>
-              <span className="font-semibold truncate block">{patient.email}</span>
+            <div className="min-w-0">
+              <span className="block text-xs text-slate-500">E-mail</span>
+              <span className="block truncate font-semibold text-slate-200 print:text-black">{patient.email}</span>
             </div>
           </div>
         </section>
 
-        {/* Seção 1: Evolução Física e Composição Corporal */}
+        {/* seção 1: evolução física e composição corporal */}
         <section className="space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white print:text-black flex items-center gap-2">
-              <span>⚖️</span> 1. Acompanhamento Físico & Antropométrico
+          <div className="flex items-center justify-between border-b border-white/[0.06] print:border-slate-300 pb-2">
+            <h3 className="flex items-center gap-2 text-base font-bold text-white print:text-black">
+              <Dumbbell className="h-4 w-4 text-sky-400 print:hidden" strokeWidth={2} />
+              1. Acompanhamento físico & antropométrico
             </h3>
             <span className="text-xs text-slate-500">
               {physical.total_records} medições registradas
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <MetricBox
-              label="Peso Atual"
+              label="Peso atual"
               value={physical.latest_weight_kg ? `${physical.latest_weight_kg} kg` : '—'}
               sub={
                 physical.delta_weight_kg !== null
@@ -141,12 +145,12 @@ export default function MedicalSummaryPage() {
               }
             />
             <MetricBox
-              label="IMC Atual"
+              label="IMC atual"
               value={physical.latest_imc ? `${physical.latest_imc}` : '—'}
               sub={physical.imc_classification ?? undefined}
             />
             <MetricBox
-              label="% Gordura Atual"
+              label="% gordura atual"
               value={physical.latest_body_fat_pct ? `${physical.latest_body_fat_pct}%` : '—'}
               sub={
                 physical.delta_body_fat_pct !== null
@@ -155,18 +159,19 @@ export default function MedicalSummaryPage() {
               }
             />
             <MetricBox
-              label="Massa Muscular"
+              label="Massa muscular"
               value={physical.latest_muscle_mass_kg ? `${physical.latest_muscle_mass_kg} kg` : '—'}
               sub="Massa magra estimada"
             />
           </div>
         </section>
 
-        {/* Seção 2: Exames Clínicos e Biomarcadores Mais Recentes */}
+        {/* seção 2: exames clínicos e biomarcadores mais recentes */}
         <section className="space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white print:text-black flex items-center gap-2">
-              <span>🧪</span> 2. Painel de Biomarcadores Laboratoriais
+          <div className="flex items-center justify-between border-b border-white/[0.06] print:border-slate-300 pb-2">
+            <h3 className="flex items-center gap-2 text-base font-bold text-white print:text-black">
+              <FlaskConical className="h-4 w-4 text-emerald-400 print:hidden" strokeWidth={2} />
+              2. Painel de biomarcadores laboratoriais
             </h3>
             {clinical.latest_exam_date && (
               <span className="text-xs text-slate-500">
@@ -176,77 +181,73 @@ export default function MedicalSummaryPage() {
           </div>
 
           {clinical.latest_markers.length === 0 ? (
-            <p className="text-sm text-slate-400 italic">Nenhum marcador cadastrado nos exames.</p>
+            <p className="text-sm italic text-slate-500">Nenhum marcador cadastrado nos exames.</p>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 print:border-slate-300">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-100 dark:bg-slate-800/60 print:bg-slate-200 text-slate-600 dark:text-slate-300 print:text-black font-bold uppercase tracking-wider">
-                  <tr>
-                    <th className="p-3">Biomarcador</th>
-                    <th className="p-3">Resultado</th>
-                    <th className="p-3">Referência</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Variação Recente</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800 print:divide-slate-300">
-                  {clinical.latest_markers.map((m) => (
-                    <tr key={m.name} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                      <td className="p-3 font-semibold text-slate-900 dark:text-slate-100 print:text-black">
-                        {m.name}
-                      </td>
-                      <td className="p-3 font-bold tabular-nums">
-                        {m.value} {m.unit}
-                      </td>
-                      <td className="p-3 text-slate-500">{m.reference_range || '—'}</td>
-                      <td className="p-3">
-                        <span
-                          className={`px-2 py-0.5 rounded-full font-semibold text-[10px] ${
-                            m.status === 'normal'
-                              ? 'bg-green-100 text-green-700 print:bg-transparent print:text-green-700'
-                              : m.status === 'alto'
-                              ? 'bg-red-100 text-red-700 print:bg-transparent print:text-red-700'
-                              : m.status === 'baixo'
-                              ? 'bg-yellow-100 text-yellow-700 print:bg-transparent print:text-yellow-700'
-                              : 'text-slate-400'
-                          }`}
-                        >
-                          {m.status ? m.status.toUpperCase() : 'CONFERIDO'}
-                        </span>
-                      </td>
-                      <td className="p-3 tabular-nums">
-                        {m.delta_pct !== null ? (
-                          <span
-                            className={`font-semibold ${
-                              m.trend === 'melhora'
-                                ? 'text-green-600'
-                                : m.trend === 'piora'
-                                ? 'text-amber-600'
-                                : 'text-slate-400'
-                            }`}
-                          >
-                            {m.delta_pct > 0 ? '+' : ''}
-                            {m.delta_pct}% ({m.trend})
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
+            <>
+              {/* tabela: telas >= sm e impressão */}
+              <div className="hidden overflow-hidden rounded-2xl border border-white/[0.06] print:border-slate-300 sm:block print:block">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead className="bg-white/[0.03] print:bg-slate-200 font-bold uppercase tracking-wider text-slate-400 print:text-black">
+                    <tr>
+                      <th className="p-3">Biomarcador</th>
+                      <th className="p-3">Resultado</th>
+                      <th className="p-3">Referência</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Variação recente</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.06] print:divide-slate-300">
+                    {clinical.latest_markers.map((m) => (
+                      <tr key={m.name} className="hover:bg-white/[0.02]">
+                        <td className="p-3 font-semibold text-slate-100 print:text-black">{m.name}</td>
+                        <td className="p-3 font-bold tabular-nums text-slate-200 print:text-black">
+                          {m.value} {m.unit}
+                        </td>
+                        <td className="p-3 text-slate-500">{m.reference_range || '—'}</td>
+                        <td className="p-3">
+                          <MarkerStatusChip status={m.status} />
+                        </td>
+                        <td className="p-3 tabular-nums">
+                          <MarkerTrend deltaPct={m.delta_pct} trend={m.trend} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* cartões: mobile (< sm), evita quebra horizontal forçada da tabela; some na impressão */}
+              <div className="space-y-2 sm:hidden print:hidden">
+                {clinical.latest_markers.map((m) => (
+                  <div key={m.name} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="font-semibold text-slate-100">{m.name}</span>
+                      <MarkerStatusChip status={m.status} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      <span className="font-bold tabular-nums text-slate-200">
+                        {m.value} {m.unit}
+                      </span>
+                      <span className="text-slate-500">ref: {m.reference_range || '—'}</span>
+                    </div>
+                    <div className="mt-1.5 text-xs">
+                      <MarkerTrend deltaPct={m.delta_pct} trend={m.trend} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </section>
 
-        {/* Seção 3: Alertas e Observações Clínicas */}
+        {/* seção 3: alertas e observações clínicas */}
         {clinical.active_alerts.length > 0 && (
-          <section className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 dark:border-amber-900/50 dark:bg-amber-950/20 print:border-amber-400 print:bg-amber-50 space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 print:text-amber-900 flex items-center gap-1.5">
-              <span>⚠️</span> Marcadores e Variações com Atenção Clínica
+          <section className="space-y-2 rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] print:border-amber-400 print:bg-amber-50 p-5">
+            <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-300 print:text-amber-900">
+              <TriangleAlert className="h-3.5 w-3.5 print:hidden" strokeWidth={2} />
+              Marcadores e variações com atenção clínica
             </h4>
-            <ul className="space-y-1 text-xs text-amber-900 dark:text-amber-200 print:text-black">
+            <ul className="space-y-1 text-xs text-amber-200/90 print:text-black">
               {clinical.active_alerts.map((alt, i) => (
                 <li key={i} className="flex items-start gap-2">
                   <span className="font-bold">• {alt.marker} ({alt.value}):</span>
@@ -257,20 +258,20 @@ export default function MedicalSummaryPage() {
           </section>
         )}
 
-        {/* Rodapé e Disclaimer Médico */}
-        <div className="pt-8 border-t border-slate-200 dark:border-slate-800 print:border-slate-300 space-y-4">
-          <p className="text-[11px] text-slate-500 print:text-slate-600 italic">
+        {/* rodapé e disclaimer médico */}
+        <div className="space-y-4 border-t border-white/[0.06] print:border-slate-300 pt-8">
+          <p className="text-[11px] italic text-slate-500 print:text-slate-600">
             {report.disclaimer}
           </p>
 
-          <div className="grid grid-cols-2 gap-8 pt-8 print:grid">
-            <div className="border-t border-slate-300 dark:border-slate-700 text-center pt-2">
-              <p className="text-xs font-semibold">{patient.name}</p>
-              <p className="text-[10px] text-slate-400">Assinatura do Paciente</p>
+          <div className="grid grid-cols-1 gap-8 pt-8 sm:grid-cols-2 print:grid">
+            <div className="border-t border-slate-600 print:border-slate-300 pt-2 text-center">
+              <p className="text-xs font-semibold text-slate-200 print:text-black">{patient.name}</p>
+              <p className="text-[10px] text-slate-500">Assinatura do paciente</p>
             </div>
-            <div className="border-t border-slate-300 dark:border-slate-700 text-center pt-2">
-              <p className="text-xs font-semibold">Médico / Nutricionista Responsável</p>
-              <p className="text-[10px] text-slate-400">Carimbo e CRM/CRN</p>
+            <div className="border-t border-slate-600 print:border-slate-300 pt-2 text-center">
+              <p className="text-xs font-semibold text-slate-200 print:text-black">Médico / nutricionista responsável</p>
+              <p className="text-[10px] text-slate-500">Carimbo e CRM/CRN</p>
             </div>
           </div>
         </div>
@@ -281,10 +282,36 @@ export default function MedicalSummaryPage() {
 
 function MetricBox({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 print:bg-slate-100/80 p-4 border border-slate-200 dark:border-slate-800 print:border-slate-300">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
-      <p className="text-xl font-bold text-slate-900 dark:text-white print:text-black mt-1">{value}</p>
-      {sub && <p className="text-[11px] text-slate-500 mt-0.5">{sub}</p>}
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] print:border-slate-300 print:bg-slate-100/80 p-4">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span>
+      <p className="mt-1 text-xl font-bold text-white print:text-black">{value}</p>
+      {sub && <p className="mt-0.5 text-[11px] text-slate-500">{sub}</p>}
     </div>
+  )
+}
+
+function MarkerStatusChip({ status }: { status: string | null }) {
+  const styles: Record<string, string> = {
+    normal: 'bg-emerald-500/10 text-emerald-300 print:bg-transparent print:text-emerald-700',
+    alto: 'bg-rose-500/10 text-rose-300 print:bg-transparent print:text-rose-700',
+    baixo: 'bg-amber-500/10 text-amber-300 print:bg-transparent print:text-amber-700',
+  }
+  const cls = (status && styles[status]) || 'text-slate-500'
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${cls}`}>
+      {status ? status.toUpperCase() : 'CONFERIDO'}
+    </span>
+  )
+}
+
+function MarkerTrend({ deltaPct, trend }: { deltaPct: number | null; trend: string | null }) {
+  if (deltaPct === null) return <span className="text-slate-500">—</span>
+  const cls =
+    trend === 'melhora' ? 'text-emerald-400' : trend === 'piora' ? 'text-amber-400' : 'text-slate-500'
+  return (
+    <span className={`font-semibold ${cls}`}>
+      {deltaPct > 0 ? '+' : ''}
+      {deltaPct}% ({trend})
+    </span>
   )
 }

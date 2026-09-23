@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useState } from 'react'
+import { Cloud, KeyRound, Server, ShieldCheck } from 'lucide-react'
 
 import { extractErrorMessage } from '@/lib/api'
 import * as configService from '@/lib/services/configService'
@@ -11,6 +12,11 @@ import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import Spinner from '@/components/ui/Spinner'
 
+const ENGINE_OPTIONS = [
+  { value: 'llm' as const, label: 'LLM (nuvem)', desc: 'OpenAI, Gemini, etc.', icon: Cloud },
+  { value: 'local' as const, label: 'Local', desc: 'Ollama, LM Studio', icon: Server },
+]
+
 // ─── página ───────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -19,7 +25,7 @@ export default function SettingsPage() {
 
   const [engineMode, setEngineMode] = useState<EngineMode>('llm')
   const [provider, setProvider] = useState<LlmProvider>(LLM_PROVIDERS[0])
-  // nunca é pré-preenchido com a chave vinda do backend — só o placeholder indica que já existe uma
+  // nunca é pré-preenchido com a chave vinda do backend: só o placeholder indica que já existe uma
   const [apiKey, setApiKey] = useState('')
   const [modelName, setModelName] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
@@ -87,28 +93,28 @@ export default function SettingsPage() {
   if (loadingConfig) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <Spinner size="lg" className="text-primary-500" />
+        <Spinner size="lg" className="text-sky-400" />
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-2xl space-y-8 pb-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Configurações de IA</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-2xl font-bold tracking-tight text-white">Configurações de IA</h1>
+        <p className="mt-1 text-sm text-slate-400">
           Escolha o motor de inteligência artificial para extração e análise dos seus dados.
         </p>
       </div>
 
       {/* status atual */}
       {current && (
-        <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 dark:border-green-800/50 dark:bg-green-900/20">
-          <span className="h-2 w-2 rounded-full bg-green-500" />
-          <p className="text-sm text-green-700 dark:text-green-400">
+        <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
+          <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          <p className="text-sm text-emerald-300">
             Motor ativo:{' '}
-            <strong>
-              {current.engine_mode === 'llm' ? '☁ LLM' : '💻 Local'} — {current.model_name}
+            <strong className="text-emerald-200">
+              {current.engine_mode === 'llm' ? 'LLM' : 'Local'} — {current.model_name}
             </strong>
           </p>
         </div>
@@ -116,38 +122,38 @@ export default function SettingsPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* seleção de motor */}
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
-          <p className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-300">
-            Motor de IA
-          </p>
+        <div className="rounded-2xl border border-white/[0.06] bg-slate-900/60 p-6 shadow-sm">
+          <p className="mb-4 text-sm font-semibold text-slate-300">Motor de IA</p>
           <div className="grid grid-cols-2 gap-3">
-            {(
-              [
-                { value: 'llm', label: '☁ LLM (Nuvem)', desc: 'OpenAI, Gemini, etc.' },
-                { value: 'local', label: '💻 Local', desc: 'Ollama, LM Studio' },
-              ] as const
-            ).map(({ value, label, desc }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => handleEngineChange(value)}
-                className={[
-                  'flex flex-col rounded-xl border-2 p-4 text-left transition',
-                  engineMode === value
-                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                    : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600',
-                ].join(' ')}
-              >
-                <span className="font-medium text-slate-800 dark:text-slate-200">{label}</span>
-                <span className="text-xs text-slate-400">{desc}</span>
-              </button>
-            ))}
+            {ENGINE_OPTIONS.map(({ value, label, desc, icon: Icon }) => {
+              const active = engineMode === value
+              return (
+                <div
+                  key={value}
+                  className={active ? 'rounded-xl bg-gradient-to-br from-emerald-400 to-sky-500 p-[1.5px]' : ''}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleEngineChange(value)}
+                    className={`flex w-full flex-col gap-2 rounded-[11px] p-4 text-left transition ${
+                      active
+                        ? 'bg-slate-900'
+                        : 'border border-white/10 bg-white/[0.02] hover:border-white/20'
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 ${active ? 'text-sky-400' : 'text-slate-500'}`} strokeWidth={2} />
+                    <span className="font-medium text-slate-100">{label}</span>
+                    <span className="text-xs text-slate-500">{desc}</span>
+                  </button>
+                </div>
+              )
+            })}
           </div>
         </div>
 
         {/* provedor e modelo */}
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm space-y-4">
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+        <div className="space-y-4 rounded-2xl border border-white/[0.06] bg-slate-900/60 p-6 shadow-sm">
+          <p className="text-sm font-semibold text-slate-300">
             {engineMode === 'llm' ? 'Provedor' : 'Servidor local'}
           </p>
 
@@ -157,12 +163,11 @@ export default function SettingsPage() {
                 key={p.label}
                 type="button"
                 onClick={() => selectProvider(p)}
-                className={[
-                  'rounded-lg border px-3 py-1.5 text-sm transition',
+                className={`min-h-11 rounded-lg border px-3 text-sm transition ${
                   provider.label === p.label
-                    ? 'border-primary-500 bg-primary-50 font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
-                    : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400',
-                ].join(' ')}
+                    ? 'border-sky-500/40 bg-sky-500/10 font-medium text-sky-300'
+                    : 'border-white/10 text-slate-400 hover:border-white/20 hover:text-slate-200'
+                }`}
               >
                 {p.label}
               </button>
@@ -206,19 +211,28 @@ export default function SettingsPage() {
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={current?.model_name ? '•••••••••••• (deixe em branco para manter)' : 'sk-...'}
               autoComplete="off"
-              helpText="Sua chave é armazenada criptografada — nunca é reexibida no navegador."
+              suffix={<KeyRound className="h-4 w-4 text-slate-500" strokeWidth={2} />}
             />
           )}
+
+          {/* banner informativo sobre privacidade */}
+          <div className="flex items-start gap-2.5 rounded-xl border border-sky-500/20 bg-sky-500/[0.06] px-4 py-3">
+            <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0 text-sky-400" strokeWidth={2} />
+            <p className="text-xs text-sky-200/80">
+              Sua chave é criptografada em repouso e nunca é reexibida no navegador. Com o motor LLM,
+              suas fotos e laudos são enviados apenas ao provedor configurado acima para a extração.
+            </p>
+          </div>
         </div>
 
         {saveError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+          <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
             {saveError}
           </div>
         )}
 
         {saveSuccess && (
-          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
             Configuração salva com sucesso!
           </div>
         )}

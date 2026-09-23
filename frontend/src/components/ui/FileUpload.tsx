@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { File as FileIcon, FileText, Upload, X } from 'lucide-react'
 import { formatBytes } from '@/lib/utils'
 
 interface FileUploadProps {
@@ -63,9 +64,7 @@ export default function FileUpload({
 
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
-      {label && (
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
-      )}
+      {label && <span className="text-sm font-medium text-slate-300">{label}</span>}
 
       {!file ? (
         <div
@@ -77,64 +76,50 @@ export default function FileUpload({
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
           className={[
-            'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 transition',
+            'flex min-h-[132px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition',
             dragging
-              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-              : 'border-slate-300 hover:border-primary-400 hover:bg-slate-50 dark:border-slate-600 dark:hover:border-primary-500 dark:hover:bg-slate-800/50',
+              ? 'border-emerald-400/60 bg-emerald-500/[0.06]'
+              : 'border-white/10 bg-white/[0.02] hover:border-sky-500/40 hover:bg-sky-500/[0.04]',
           ].join(' ')}
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            className="h-8 w-8 text-slate-400"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-          </svg>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            <span className="font-medium text-primary-600 dark:text-primary-400">Clique para selecionar</span>
-            {' '}ou arraste aqui
+          <Upload
+            className={`h-7 w-7 transition ${dragging ? 'text-emerald-400' : 'text-slate-500'}`}
+            strokeWidth={1.75}
+          />
+          <p className="text-sm text-slate-400">
+            <span className="font-medium text-sky-400">Clique para selecionar</span> ou arraste aqui
           </p>
           {accept && (
-            <p className="text-xs text-slate-400">{accept.replace(/,/g, ', ')} · máx. {maxMB} MB</p>
+            <p className="text-xs text-slate-500">{accept.replace(/,/g, ', ')} · máx. {maxMB} MB</p>
           )}
         </div>
       ) : (
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+        <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
           {previewUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={previewUrl} alt="preview" className="h-14 w-14 rounded-lg object-cover" />
           ) : (
-            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700">
+            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-white/5">
               {isPdf ? (
-                <svg viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 text-red-500">
-                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM9.5 17.5h-1V15H7v2.5H6V13h1v1.5h1.5V13h1v4.5zm2.5-1.1c0 .7-.4 1.1-1.2 1.1H9.5V13H11c.7 0 1 .3 1 .9v.1c0 .4-.2.6-.5.7.4.1.5.4.5.7v.2zm3.3-2.4h-1.5v1h1.3v.9h-1.3v1.6H13V13h2.3v1z" />
-                </svg>
+                <FileText className="h-6 w-6 text-rose-400" strokeWidth={1.75} />
               ) : (
-                <svg viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 text-slate-400">
-                  <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9l-7-7z" />
-                </svg>
+                <FileIcon className="h-6 w-6 text-slate-400" strokeWidth={1.75} />
               )}
             </div>
           )}
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
-              {file.name}
-            </p>
-            <p className="text-xs text-slate-400">{formatBytes(file.size)}</p>
+            <p className="truncate text-sm font-medium text-slate-200">{file.name}</p>
+            <p className="text-xs text-slate-500">{formatBytes(file.size)}</p>
           </div>
 
           <button
             type="button"
             onClick={clear}
-            className="ml-1 rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300 transition"
+            className="ml-1 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/10 hover:text-white"
             aria-label="Remover arquivo"
           >
-            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-            </svg>
+            <X className="h-4 w-4" strokeWidth={2} />
           </button>
         </div>
       )}
@@ -147,7 +132,7 @@ export default function FileUpload({
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
       />
 
-      {sizeError && <p className="text-xs text-red-500">{sizeError}</p>}
+      {sizeError && <p className="text-xs text-rose-400">{sizeError}</p>}
     </div>
   )
 }

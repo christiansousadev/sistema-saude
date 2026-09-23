@@ -16,8 +16,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
-        <Spinner size="lg" className="text-primary-600" />
+      <div className="flex min-h-screen items-center justify-center bg-slate-950">
+        <Spinner size="lg" className="text-emerald-400" />
       </div>
     )
   }
@@ -25,9 +25,12 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   if (!user) return null
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-slate-950">
       <Navbar />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
+      {/* padding inferior soma a barra de gestos do ios/android para o conteúdo nunca ficar coberto */}
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
+        {children}
+      </main>
     </div>
   )
 }

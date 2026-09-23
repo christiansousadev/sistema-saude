@@ -2,6 +2,7 @@
 
 import { type FormEvent, memo, useCallback, useState } from 'react'
 import Image from 'next/image'
+import { Camera, ImageOff, Scale, Trash2 } from 'lucide-react'
 
 import { useAuth } from '@/contexts/AuthContext'
 import { extractErrorMessage } from '@/lib/api'
@@ -16,6 +17,22 @@ import FileUpload from '@/components/ui/FileUpload'
 import Input from '@/components/ui/Input'
 import Spinner from '@/components/ui/Spinner'
 import Textarea from '@/components/ui/Textarea'
+
+// ─── badge translúcida de métrica ─────────────────────────────────────────────
+
+function MetricBadge({ label, value, accent }: { label: string; value: string; accent: 'sky' | 'emerald' | 'amber' }) {
+  const styles = {
+    sky: 'border-sky-500/20 bg-sky-500/10 text-sky-300',
+    emerald: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300',
+    amber: 'border-amber-500/20 bg-amber-500/10 text-amber-300',
+  }
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${styles[accent]}`}>
+      <span className="text-slate-400">{label}:&nbsp;</span>
+      {value}
+    </span>
+  )
+}
 
 // ─── card de registro histórico ───────────────────────────────────────────────
 // memo evita re-render de toda a lista a cada tecla digitada no formulário ao lado
@@ -51,7 +68,7 @@ const RecordCard = memo(function RecordCard({
   }
 
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
+    <div className="rounded-2xl border border-white/[0.06] bg-slate-900/60 p-4 shadow-sm">
       <div className="flex items-start gap-3">
         {/* thumbnail */}
         {record.photo_path ? (
@@ -65,44 +82,42 @@ const RecordCard = memo(function RecordCard({
             />
           </div>
         ) : (
-          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-7 w-7 text-slate-300">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-            </svg>
+          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-white/[0.04]">
+            <ImageOff className="h-6 w-6 text-slate-600" strokeWidth={1.5} />
           </div>
         )}
 
         {/* métricas */}
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-slate-400">{formatDateTime(record.recorded_at)}</p>
-          <div className="mt-1 flex flex-wrap gap-3">
+          <p className="text-xs text-slate-500">{formatDateTime(record.recorded_at)}</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
             {record.weight_kg && (
-              <Metric label="Peso" value={`${record.weight_kg.toFixed(1)} kg`} />
+              <MetricBadge label="Peso" value={`${record.weight_kg.toFixed(1)} kg`} accent="sky" />
             )}
             {record.body_fat_pct && (
-              <Metric label="Gordura" value={`${record.body_fat_pct.toFixed(1)}%`} />
+              <MetricBadge label="Gordura" value={`${record.body_fat_pct.toFixed(1)}%`} accent="amber" />
             )}
             {record.muscle_mass_kg && (
-              <Metric label="Músculo" value={`${record.muscle_mass_kg.toFixed(1)} kg`} />
+              <MetricBadge label="Músculo" value={`${record.muscle_mass_kg.toFixed(1)} kg`} accent="emerald" />
             )}
           </div>
         </div>
 
-        {/* botão de ações com confirmação inline — B-3 */}
+        {/* botão de exclusão minimalista com confirmação inline (B-3) */}
         <div className="flex flex-col items-end gap-1">
           {confirmDelete ? (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-red-600 dark:text-red-400">Confirmar?</span>
+              <span className="text-xs text-rose-400">Confirmar?</span>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="rounded px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 transition"
+                className="rounded px-2 py-1 text-xs font-medium bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 transition"
               >
                 {deleting ? '...' : 'Sim'}
               </button>
               <button
                 onClick={() => setConfirmDelete(false)}
-                className="rounded px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 transition"
+                className="rounded px-2 py-1 text-xs font-medium bg-white/5 text-slate-300 hover:bg-white/10 transition"
               >
                 Não
               </button>
@@ -111,16 +126,14 @@ const RecordCard = memo(function RecordCard({
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 transition"
-              aria-label="Remover"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-rose-500/10 hover:text-rose-400"
+              aria-label="Remover medição"
             >
-              <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
-              </svg>
+              <Trash2 className="h-4 w-4" strokeWidth={1.75} />
             </button>
           )}
           {deleteError && (
-            <p className="text-xs text-red-500 max-w-[120px] text-right">{deleteError}</p>
+            <p className="text-xs text-rose-400 max-w-[120px] text-right">{deleteError}</p>
           )}
         </div>
       </div>
@@ -129,30 +142,19 @@ const RecordCard = memo(function RecordCard({
       {ai && <AiAnalysisCard data={ai} />}
 
       {record.notes && (
-        <p className="mt-2 text-xs text-slate-400 italic">{record.notes}</p>
+        <p className="mt-2 text-xs text-slate-500 italic">{record.notes}</p>
       )}
     </div>
   )
 })
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-[10px] uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{value}</p>
-    </div>
-  )
-}
 
 // ─── formulário de nova medição ────────────────────────────────────────────────
 // isolado em componente próprio: o estado do formulário fica fora de PhysicalPage,
 // então digitar aqui não re-renderiza a lista de histórico ao lado
 
 function NewMeasurementForm({
-  heightCm,
   onCreated,
 }: {
-  heightCm: number | null | undefined
   onCreated: (record: PhysicalResponse) => void
 }) {
   const [recordedAt, setRecordedAt] = useState(() => new Date().toISOString().slice(0, 16))
@@ -196,8 +198,11 @@ function NewMeasurementForm({
   }
 
   return (
-    <section className="space-y-4">
-      <h2 className="font-semibold text-slate-800 dark:text-slate-200">Nova Medição</h2>
+    <section className="space-y-4 rounded-2xl border border-white/[0.06] bg-slate-900/60 p-5 shadow-sm">
+      <h2 className="flex items-center gap-2 font-semibold text-white">
+        <Scale className="h-4 w-4 text-sky-400" strokeWidth={2} />
+        Nova medição
+      </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <FileUpload
@@ -261,7 +266,7 @@ function NewMeasurementForm({
         />
 
         {formError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+          <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
             {formError}
           </div>
         )}
@@ -271,11 +276,11 @@ function NewMeasurementForm({
         </Button>
       </form>
 
-      {/* resultado da ia após salvar — M-3: AiAnalysisCard ao invés de JSON bruto */}
+      {/* resultado da ia após salvar (M-3): AiAnalysisCard ao invés de JSON bruto */}
       {lastResult?.ai_analysis && (
-        <div className="rounded-2xl border border-primary-200 bg-primary-50 p-4 dark:border-primary-800/50 dark:bg-primary-900/20">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-600 dark:text-primary-400">
-            Resultado da Análise de IA
+        <div className="rounded-2xl border border-sky-500/20 bg-sky-500/[0.06] p-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-sky-300">
+            Resultado da análise de IA
           </p>
           <AiAnalysisCard
             data={lastResult.ai_analysis as Record<string, unknown>}
@@ -287,6 +292,17 @@ function NewMeasurementForm({
   )
 }
 
+// ─── stat de resumo no cabeçalho ───────────────────────────────────────────────
+
+function HeaderStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+      <p className="mt-0.5 text-lg font-bold tracking-tight text-white">{value}</p>
+    </div>
+  )
+}
+
 // ─── página ───────────────────────────────────────────────────────────────────
 
 // B-1: NOW como função lazy no useState para evitar hydration mismatch
@@ -294,13 +310,13 @@ function NewMeasurementForm({
 export default function PhysicalPage() {
   const { user } = useAuth()
 
-  // M-4: paginação com hook usePagination — substitui estados manuais
+  // M-4: paginação com hook usePagination, substitui estados manuais
   const pagination = usePagination<PhysicalResponse>({
     fetcher: (skip, limit) => physicalService.listPhysical(skip, limit),
     pageSize: 20,
   })
 
-  // identidade estável — evita que RecordCard memoizado re-renderize à toa
+  // identidade estável evita que RecordCard memoizado re-renderize à toa
   const handleCreated = useCallback(
     (created: PhysicalResponse) => pagination.prependItem(created),
     [pagination.prependItem],
@@ -312,50 +328,69 @@ export default function PhysicalPage() {
 
   const [isCompareOpen, setIsCompareOpen] = useState(false)
   const photoCount = pagination.items.filter((r) => Boolean(r.photo_path)).length
+  const latestWeight = pagination.items[0]?.weight_kg
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Evolução Física</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Registre suas medidas semanais{user?.height_cm ? ` · Altura: ${user.height_cm} cm` : ''}.
-        </p>
+    <div className="space-y-6 pb-6">
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-400">
+            <Scale className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-white">Evolução física</h1>
+            <p className="text-sm text-slate-400">
+              Registre suas medidas semanais{user?.height_cm ? ` · altura ${user.height_cm} cm` : ''}
+            </p>
+          </div>
+        </div>
+
+        {/* estatísticas de resumo */}
+        <div className="flex flex-wrap gap-3">
+          <HeaderStat label="Registros" value={String(pagination.total)} />
+          <HeaderStat label="Peso atual" value={latestWeight ? `${latestWeight.toFixed(1)} kg` : '—'} />
+          <HeaderStat label="Fotos" value={String(photoCount)} />
+        </div>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[380px_1fr]">
-        <NewMeasurementForm heightCm={user?.height_cm} onCreated={handleCreated} />
+        <NewMeasurementForm onCreated={handleCreated} />
 
         {/* histórico */}
         <section>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-semibold text-white flex items-center gap-2">
               <span>Histórico</span>
               {pagination.total > 0 && (
-                <span className="text-sm font-normal text-slate-400">({pagination.total})</span>
+                <span className="text-sm font-normal text-slate-500">({pagination.total})</span>
               )}
             </h2>
 
-            {/* Botão de Comparação de Fotos */}
+            {/* botão de comparação de fotos */}
             {photoCount >= 2 && (
               <button
                 onClick={() => setIsCompareOpen(true)}
-                className="rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:from-primary-700 hover:to-indigo-700 transition flex items-center gap-1.5"
+                className="flex min-h-11 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-slate-200 transition hover:border-sky-500/30 hover:bg-white/10"
               >
-                <span>📸</span> Comparar Fotos ({photoCount})
+                <Camera className="h-3.5 w-3.5 text-sky-400" strokeWidth={2} />
+                Comparar fotos ({photoCount})
               </button>
             )}
           </div>
 
           {pagination.isLoading ? (
             <div className="flex justify-center py-12">
-              <Spinner size="md" className="text-primary-500" />
+              <Spinner size="md" className="text-sky-400" />
             </div>
           ) : pagination.error ? (
-            <p className="text-sm text-red-500">{pagination.error}</p>
+            <p className="text-sm text-rose-400">{pagination.error}</p>
           ) : pagination.items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 py-12 dark:border-slate-700">
+            <div className="flex flex-col items-center justify-center gap-2.5 rounded-2xl border border-dashed border-white/10 py-12">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.04] text-slate-500">
+                <Scale className="h-4 w-4" strokeWidth={2} />
+              </span>
               <p className="text-slate-400">Nenhuma medição ainda</p>
-              <p className="mt-1 text-xs text-slate-300">Use o formulário ao lado para começar</p>
+              <p className="text-xs text-slate-500">Use o formulário ao lado para começar</p>
             </div>
           ) : (
             <>
@@ -382,7 +417,7 @@ export default function PhysicalPage() {
         </section>
       </div>
 
-      {/* Modal de Comparação de Fotos */}
+      {/* modal de comparação de fotos */}
       <PhotoComparisonModal
         isOpen={isCompareOpen}
         onClose={() => setIsCompareOpen(false)}

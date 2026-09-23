@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
+import { ArrowLeftRight, Camera, Columns2, X } from 'lucide-react'
 import type { PhysicalResponse } from '@/types'
 import { formatDateTime, getFileUrl, calcImc } from '@/lib/utils'
 import Button from '@/components/ui/Button'
@@ -19,10 +20,10 @@ export default function PhotoComparisonModal({
   records,
   userHeightCm,
 }: PhotoComparisonModalProps) {
-  // Filtra apenas medições que contenham fotos válidas
+  // filtra apenas medições que contenham fotos válidas
   const photoRecords = records.filter((r) => Boolean(r.photo_path))
 
-  // Seleciona a mais antiga como Antes e a mais recente como Depois por padrão
+  // seleciona a mais antiga como antes e a mais recente como depois por padrão
   const [beforeIndex, setBeforeIndex] = useState<number>(() =>
     photoRecords.length > 1 ? photoRecords.length - 1 : 0
   )
@@ -78,9 +79,14 @@ export default function PhotoComparisonModal({
 
   if (!beforeRec || !afterRec) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div className="w-full max-w-md rounded-2xl bg-[var(--surface)] p-6 shadow-xl text-center space-y-4">
-          <p className="text-slate-600 dark:text-slate-300">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Comparador de fotos"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4"
+      >
+        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-xl text-center space-y-4">
+          <p className="text-slate-300">
             Você precisa de pelo menos duas fotos registradas para comparar a evolução.
           </p>
           <Button onClick={onClose} variant="secondary">
@@ -91,7 +97,7 @@ export default function PhotoComparisonModal({
     )
   }
 
-  // Cálculos de métricas e deltas
+  // cálculos de métricas e deltas
   const beforeImc =
     beforeRec.weight_kg && userHeightCm ? calcImc(beforeRec.weight_kg, userHeightCm) : null
   const afterImc =
@@ -120,39 +126,46 @@ export default function PhotoComparisonModal({
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="relative w-full max-w-4xl rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl space-y-6 my-auto max-h-[95vh] flex flex-col">
-        {/* Cabeçalho */}
-        <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Comparador visual de evolução"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 overflow-y-auto"
+    >
+      <div className="relative w-full max-w-4xl rounded-3xl border border-white/10 bg-slate-950 p-6 shadow-2xl space-y-6 my-auto max-h-[95vh] flex flex-col">
+        {/* cabeçalho */}
+        <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span>📸</span> Comparador Visual de Evolução
+            <h2 className="flex items-center gap-2 text-xl font-bold text-white">
+              <Camera className="h-5 w-5 text-sky-400" strokeWidth={2} />
+              Comparador visual de evolução
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="mt-0.5 text-xs text-slate-400">
               Compare visualmente as fotos de progresso e veja a variação das suas medidas.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 transition"
+            aria-label="Fechar comparador"
+            className="rounded-xl p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"
           >
-            ✕
+            <X className="h-5 w-5" strokeWidth={2} />
           </button>
         </div>
 
-        {/* Controles de seleção e modo */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl">
+        {/* controles de seleção e modo */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3">
           <div>
-            <label className="block text-[11px] font-semibold uppercase text-slate-500 mb-1">
-              Foto 1 (Antes):
+            <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-500">
+              Foto 1 (antes)
             </label>
             <select
               value={beforeIndex}
               onChange={(e) => setBeforeIndex(Number(e.target.value))}
-              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-200 outline-none transition focus:border-sky-500/50 focus:ring-2 focus:ring-sky-500/20"
             >
               {photoRecords.map((r, i) => (
-                <option key={r.id} value={i}>
+                <option key={r.id} value={i} className="bg-slate-900">
                   {formatDateTime(r.recorded_at)} {r.weight_kg ? `(${r.weight_kg}kg)` : ''}
                 </option>
               ))}
@@ -160,56 +173,58 @@ export default function PhotoComparisonModal({
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold uppercase text-slate-500 mb-1">
-              Foto 2 (Depois):
+            <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-500">
+              Foto 2 (depois)
             </label>
             <select
               value={afterIndex}
               onChange={(e) => setAfterIndex(Number(e.target.value))}
-              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-200 outline-none transition focus:border-sky-500/50 focus:ring-2 focus:ring-sky-500/20"
             >
               {photoRecords.map((r, i) => (
-                <option key={r.id} value={i}>
+                <option key={r.id} value={i} className="bg-slate-900">
                   {formatDateTime(r.recorded_at)} {r.weight_kg ? `(${r.weight_kg}kg)` : ''}
                 </option>
               ))}
             </select>
           </div>
 
-          <div className="flex justify-end gap-1 pt-4 sm:pt-0">
+          <div className="flex justify-end gap-1.5 pt-4 sm:pt-0">
             <button
               onClick={() => setViewMode('slider')}
-              className={`rounded-xl px-3 py-2 text-xs font-medium transition ${
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition ${
                 viewMode === 'slider'
-                  ? 'bg-primary-600 text-white shadow-sm'
-                  : 'bg-[var(--surface)] text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'
+                  ? 'bg-sky-500 text-white shadow-sm'
+                  : 'border border-white/10 bg-white/[0.03] text-slate-400 hover:text-slate-200'
               }`}
             >
-              ↔️ Slider Interativo
+              <ArrowLeftRight className="h-3.5 w-3.5" strokeWidth={2} />
+              Slider
             </button>
             <button
               onClick={() => setViewMode('side-by-side')}
-              className={`rounded-xl px-3 py-2 text-xs font-medium transition ${
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition ${
                 viewMode === 'side-by-side'
-                  ? 'bg-primary-600 text-white shadow-sm'
-                  : 'bg-[var(--surface)] text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'
+                  ? 'bg-sky-500 text-white shadow-sm'
+                  : 'border border-white/10 bg-white/[0.03] text-slate-400 hover:text-slate-200'
               }`}
             >
-              🔲 Lado a Lado
+              <Columns2 className="h-3.5 w-3.5" strokeWidth={2} />
+              Lado a lado
             </button>
           </div>
         </div>
 
-        {/* Visualização de Fotos */}
+        {/* visualização de fotos */}
         <div className="flex-1 min-h-[300px] max-h-[440px] flex items-center justify-center">
           {viewMode === 'slider' ? (
             <div
               ref={containerRef}
               onMouseDown={() => setIsDragging(true)}
               onTouchStart={() => setIsDragging(true)}
-              className="relative w-full h-[360px] sm:h-[400px] max-w-lg mx-auto overflow-hidden rounded-2xl border border-[var(--border)] select-none cursor-ew-resize bg-black"
+              className="relative w-full h-[360px] sm:h-[400px] max-w-lg mx-auto overflow-hidden rounded-2xl border border-white/10 select-none cursor-ew-resize bg-black"
             >
-              {/* Imagem Depois (Fundo) */}
+              {/* imagem depois (fundo) */}
               <Image
                 src={getFileUrl(afterRec.photo_path!)}
                 alt="Depois"
@@ -221,7 +236,7 @@ export default function PhotoComparisonModal({
                 Depois: {formatDateTime(afterRec.recorded_at)}
               </div>
 
-              {/* Imagem Antes (Clipada pelo Slider) */}
+              {/* imagem antes (clipada pelo slider) */}
               <div
                 className="absolute inset-0 overflow-hidden"
                 style={{ width: `${sliderPos}%` }}
@@ -240,19 +255,19 @@ export default function PhotoComparisonModal({
                 </div>
               </div>
 
-              {/* Linha e Manopla do Slider */}
+              {/* linha e manopla do slider */}
               <div
-                className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_rgba(0,0,0,0.5)] cursor-ew-resize z-20 flex items-center justify-center"
+                className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_10px_rgba(0,0,0,0.5)] cursor-ew-resize z-20 flex items-center justify-center"
                 style={{ left: `${sliderPos}%` }}
               >
-                <div className="w-8 h-8 rounded-full bg-white text-slate-800 shadow-lg flex items-center justify-center text-xs font-bold ring-2 ring-primary-500">
-                  ↔
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-800 shadow-lg ring-2 ring-sky-400">
+                  <ArrowLeftRight className="h-3.5 w-3.5" strokeWidth={2.5} />
                 </div>
               </div>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 w-full h-[360px] sm:h-[400px]">
-              <div className="relative h-full rounded-2xl overflow-hidden border border-[var(--border)] bg-black">
+              <div className="relative h-full rounded-2xl overflow-hidden border border-white/10 bg-black">
                 <Image
                   src={getFileUrl(beforeRec.photo_path!)}
                   alt="Antes"
@@ -264,7 +279,7 @@ export default function PhotoComparisonModal({
                   Antes: {formatDateTime(beforeRec.recorded_at)}
                 </div>
               </div>
-              <div className="relative h-full rounded-2xl overflow-hidden border border-[var(--border)] bg-black">
+              <div className="relative h-full rounded-2xl overflow-hidden border border-white/10 bg-black">
                 <Image
                   src={getFileUrl(afterRec.photo_path!)}
                   alt="Depois"
@@ -280,8 +295,8 @@ export default function PhotoComparisonModal({
           )}
         </div>
 
-        {/* Quadro de Deltas e Variações */}
-        <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-[var(--border)] p-4">
+        {/* quadro de deltas e variações */}
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Variação entre medições ({daysBetween} dias decorridos)
@@ -291,8 +306,8 @@ export default function PhotoComparisonModal({
             <DeltaCard
               label="Peso"
               beforeVal={beforeRec.weight_kg ? `${beforeRec.weight_kg} kg` : '—'}
-              afterVal={afterRec.weight_kg ? `${afterRec.weight_kg} kg` : '—'}
               delta={deltaWeight ? `${Number(deltaWeight) > 0 ? '+' : ''}${deltaWeight} kg` : '—'}
+              afterVal={afterRec.weight_kg ? `${afterRec.weight_kg} kg` : '—'}
               isPositive={deltaWeight ? Number(deltaWeight) <= 0 : null}
             />
             <DeltaCard
@@ -303,7 +318,7 @@ export default function PhotoComparisonModal({
               isPositive={deltaFat ? Number(deltaFat) <= 0 : null}
             />
             <DeltaCard
-              label="Massa Muscular"
+              label="Massa muscular"
               beforeVal={beforeRec.muscle_mass_kg ? `${beforeRec.muscle_mass_kg} kg` : '—'}
               afterVal={afterRec.muscle_mass_kg ? `${afterRec.muscle_mass_kg} kg` : '—'}
               delta={deltaMuscle ? `${Number(deltaMuscle) > 0 ? '+' : ''}${deltaMuscle} kg` : '—'}
@@ -337,23 +352,23 @@ function DeltaCard({
   isPositive: boolean | null
 }) {
   return (
-    <div className="rounded-xl bg-[var(--surface)] p-3 border border-[var(--border)]">
-      <p className="text-[10px] uppercase font-semibold text-slate-400">{label}</p>
-      <div className="flex items-baseline justify-between mt-1">
-        <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{afterVal}</span>
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3">
+      <p className="text-[10px] uppercase font-semibold text-slate-500">{label}</p>
+      <div className="flex items-baseline justify-between mt-1.5">
+        <span className="text-sm font-bold text-white">{afterVal}</span>
         <span
-          className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
+          className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${
             isPositive === true
-              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+              ? 'bg-emerald-500/10 text-emerald-300'
               : isPositive === false
-              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+              ? 'bg-amber-500/10 text-amber-300'
               : 'text-slate-500'
           }`}
         >
           {delta}
         </span>
       </div>
-      <p className="text-[10px] text-slate-400 mt-1">Antes: {beforeVal}</p>
+      <p className="mt-1 text-[10px] text-slate-500">Antes: {beforeVal}</p>
     </div>
   )
 }

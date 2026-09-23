@@ -3,6 +3,7 @@
 import { Suspense, type FormEvent, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { Activity } from 'lucide-react'
 
 import { useAuth } from '@/contexts/AuthContext'
 import { extractErrorMessage } from '@/lib/api'
@@ -50,17 +51,15 @@ function LoginForm() {
 
   return (
     <div className="w-full max-w-sm">
-      <div className="rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-slate-800 dark:ring-white/10 px-8 py-10 space-y-6">
+      <div className="rounded-2xl border border-white/10 bg-slate-900/80 shadow-2xl backdrop-blur-xl px-8 py-10 space-y-6">
 
         {/* cabeçalho */}
         <div className="flex flex-col items-center gap-2 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-600 text-white shadow">
-            <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6" aria-hidden>
-              <path d="M12 21.593c-.525-.444-9-7.726-9-12.593 0-3.314 2.686-6 6-6 1.858 0 3.509.858 4.627 2.198C14.74 3.692 16.392 3 18 3c3.314 0 6 2.686 6 6 0 4.867-8.475 12.149-9 12.593L12 21.593z" />
-            </svg>
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-sky-500 text-slate-950 shadow">
+            <Activity className="h-6 w-6" strokeWidth={2.5} />
           </div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Bem-vindo de volta</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Acesse seu painel de saúde</p>
+          <h1 className="text-xl font-bold text-white">Bem-vindo de volta</h1>
+          <p className="text-sm text-slate-400">Acesse seu painel de saúde</p>
         </div>
 
         {/* formulário */}
@@ -88,7 +87,7 @@ function LoginForm() {
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition"
+                className="text-slate-500 hover:text-slate-300 transition"
                 aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
               >
                 <EyeIcon open={showPassword} />
@@ -99,7 +98,7 @@ function LoginForm() {
           {error && (
             <div
               role="alert"
-              className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800/50 dark:bg-red-900/20 dark:text-red-400"
+              className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300"
             >
               {error}
             </div>
@@ -110,12 +109,9 @@ function LoginForm() {
           </Button>
         </form>
 
-        <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-center text-sm text-slate-400">
           Não tem conta?{' '}
-          <Link
-            href="/register"
-            className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition"
-          >
+          <Link href="/register" className="font-medium text-sky-400 transition hover:text-sky-300">
             Criar conta
           </Link>
         </p>
@@ -131,7 +127,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div className="flex min-h-[60vh] items-center justify-center">
-          <Spinner size="lg" className="text-primary-500" />
+          <Spinner size="lg" className="text-sky-400" />
         </div>
       }
     >

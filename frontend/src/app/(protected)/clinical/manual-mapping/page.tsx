@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { ArrowLeft, CircleCheck, FileWarning } from 'lucide-react'
 
 import { extractErrorMessage } from '@/lib/api'
 import { formatDateTime, getFileUrl } from '@/lib/utils'
@@ -24,10 +25,8 @@ function FileViewer({ filePath }: { filePath: string | null }) {
 
   if (!url) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 dark:border-slate-700">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-12 w-12">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-        </svg>
+      <div className="flex h-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-white/10 text-slate-500">
+        <FileWarning className="h-10 w-10" strokeWidth={1.5} />
         <p className="text-sm">Nenhum arquivo anexado a este exame</p>
       </div>
     )
@@ -38,14 +37,14 @@ function FileViewer({ filePath }: { filePath: string | null }) {
       <iframe
         src={url}
         title="Laudo PDF"
-        className="h-full w-full rounded-2xl border border-slate-200 bg-white dark:border-slate-700"
+        className="h-full w-full rounded-2xl border border-white/10 bg-white"
       />
     )
   }
 
   // imagem
   return (
-    <div className="flex h-full items-center justify-center overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
+    <div className="flex h-full items-center justify-center overflow-auto rounded-2xl border border-white/10 bg-white/[0.02] p-4">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={url}
@@ -154,21 +153,19 @@ function MappingForm({
     <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
       {/* cabeçalho fixo do formulário */}
       <div className="mb-4 flex-shrink-0">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-          Mapeamento Manual
-        </h2>
-        <p className="mt-0.5 text-sm text-slate-500">
+        <h2 className="text-lg font-semibold text-white">Mapeamento manual</h2>
+        <p className="mt-0.5 text-sm text-slate-400">
           Preencha os valores diretamente do laudo à esquerda.
         </p>
       </div>
 
-      {/* campos por categoria — área com scroll */}
+      {/* campos por categoria (área com scroll) */}
       <div className="flex-1 overflow-y-auto pr-1 space-y-6 pb-4">
         {BIOMARKER_CATEGORIES.map((category) => {
           const markersInCategory = BIOMARKERS.filter((m) => m.category === category)
           return (
             <fieldset key={category}>
-              <legend className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-400">
+              <legend className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
                 {category}
               </legend>
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
@@ -199,9 +196,9 @@ function MappingForm({
       </div>
 
       {/* rodapé fixo com erro + botão */}
-      <div className="flex-shrink-0 space-y-3 border-t border-[var(--border)] pt-4">
+      <div className="flex-shrink-0 space-y-3 border-t border-white/[0.06] pt-4">
         {(serverError || errors.root?.serverError?.message) && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+          <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
             {serverError || (errors.root?.serverError?.message as string)}
           </div>
         )}
@@ -241,7 +238,7 @@ function ManualMappingContent() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner size="lg" className="text-primary-500" />
+        <Spinner size="lg" className="text-sky-400" />
       </div>
     )
   }
@@ -249,7 +246,7 @@ function ManualMappingContent() {
   if (fetchError || !record) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
-        <p className="text-sm text-red-500">{fetchError ?? 'Exame não encontrado.'}</p>
+        <p className="text-sm text-rose-400">{fetchError ?? 'Exame não encontrado.'}</p>
         <Button variant="secondary" onClick={() => router.push('/clinical')}>
           Voltar aos exames
         </Button>
@@ -258,31 +255,27 @@ function ManualMappingContent() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-80px)] flex-col gap-4">
+    <div className="flex h-[calc(100vh-80px)] flex-col gap-4 pb-4">
       {/* breadcrumb */}
       <div className="flex flex-shrink-0 items-center justify-between">
         <div>
           <button
             type="button"
             onClick={() => router.push('/clinical')}
-            className="mb-1 flex items-center gap-1 text-sm text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition"
+            className="mb-1 flex items-center gap-1 text-sm text-slate-500 transition hover:text-slate-200"
           >
-            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-              <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
-            </svg>
-            Exames Clínicos
+            <ArrowLeft className="h-4 w-4" strokeWidth={2} />
+            Exames clínicos
           </button>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-            Mapeamento Manual
-          </h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-xl font-bold text-white">Mapeamento manual</h1>
+          <p className="text-sm text-slate-400">
             {formatDateTime(record.recorded_at)} · exame #{record.id}
           </p>
         </div>
 
         {record.is_validated && (
-          <span className="flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+          <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-300">
+            <CircleCheck className="h-3.5 w-3.5" strokeWidth={2} />
             Validado
           </span>
         )}
@@ -292,7 +285,7 @@ function ManualMappingContent() {
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-2">
         {/* coluna esquerda: laudo */}
         <section className="min-h-0">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-400">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
             Laudo original
           </p>
           <div className="h-[calc(100%-24px)]">
@@ -301,7 +294,7 @@ function ManualMappingContent() {
         </section>
 
         {/* coluna direita: formulário */}
-        <section className="flex min-h-0 flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
+        <section className="flex min-h-0 flex-col rounded-2xl border border-white/[0.06] bg-slate-900/60 p-6 shadow-sm">
           <MappingForm
             record={record}
             onSuccess={() => router.push('/dashboard')}
@@ -319,7 +312,7 @@ export default function ManualMappingPage() {
     <Suspense
       fallback={
         <div className="flex min-h-[60vh] items-center justify-center">
-          <Spinner size="lg" className="text-primary-500" />
+          <Spinner size="lg" className="text-sky-400" />
         </div>
       }
     >

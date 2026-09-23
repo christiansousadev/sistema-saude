@@ -13,8 +13,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   }, [user, isLoading, router])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
-      {children}
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-4">
+      {/* glow decorativo sutil ao fundo */}
+      <div className="pointer-events-none absolute -top-32 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-emerald-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 right-1/4 h-96 w-96 rounded-full bg-sky-500/10 blur-3xl" />
+      <div className="relative">{children}</div>
     </div>
   )
 }

@@ -20,8 +20,10 @@ export default function PhotoComparisonModal({
   records,
   userHeightCm,
 }: PhotoComparisonModalProps) {
-  // filtra apenas medições que contenham fotos válidas
-  const photoRecords = records.filter((r) => Boolean(r.photo_path))
+  // filtra apenas medições que contenham alguma foto válida
+  const photoRecords = records.filter(
+    (r) => Boolean(r.photo_path || r.photo_back_path || r.photo_side_path)
+  )
 
   // seleciona a mais antiga como antes e a mais recente como depois por padrão
   const [beforeIndex, setBeforeIndex] = useState<number>(() =>
@@ -29,9 +31,16 @@ export default function PhotoComparisonModal({
   )
   const [afterIndex, setAfterIndex] = useState<number>(0)
   const [viewMode, setViewMode] = useState<'slider' | 'side-by-side'>('slider')
+  const [angle, setAngle] = useState<'front' | 'back' | 'side'>('front')
   const [sliderPos, setSliderPos] = useState<number>(50)
   const [isDragging, setIsDragging] = useState<boolean>(false)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const getRecordPhoto = (rec: PhysicalResponse): string | null => {
+    if (angle === 'back' && rec.photo_back_path) return rec.photo_back_path
+    if (angle === 'side' && rec.photo_side_path) return rec.photo_side_path
+    return rec.photo_path || rec.photo_back_path || rec.photo_side_path || null
+  }
 
   useEffect(() => {
     if (photoRecords.length > 1) {
@@ -115,6 +124,10 @@ export default function PhotoComparisonModal({
     beforeRec.muscle_mass_kg && afterRec.muscle_mass_kg
       ? (afterRec.muscle_mass_kg - beforeRec.muscle_mass_kg).toFixed(1)
       : null
+  const deltaWaist =
+    beforeRec.waist_cm && afterRec.waist_cm
+      ? (afterRec.waist_cm - beforeRec.waist_cm).toFixed(1)
+      : null
   const deltaImc =
     beforeImc && afterImc ? (afterImc - beforeImc).toFixed(1) : null
 
@@ -124,6 +137,9 @@ export default function PhotoComparisonModal({
         (1000 * 60 * 60 * 24)
     )
   )
+
+  const beforePhoto = getRecordPhoto(beforeRec)
+  const afterPhoto = getRecordPhoto(afterRec)
 
   return (
     <div
@@ -153,71 +169,104 @@ export default function PhotoComparisonModal({
           </button>
         </div>
 
-        {/* controles de seleção e modo */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3">
-          <div>
-            <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-500">
-              Foto 1 (antes)
-            </label>
-            <select
-              value={beforeIndex}
-              onChange={(e) => setBeforeIndex(Number(e.target.value))}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-200 outline-none transition focus:border-sky-500/50 focus:ring-2 focus:ring-sky-500/20"
-            >
-              {photoRecords.map((r, i) => (
-                <option key={r.id} value={i} className="bg-slate-900">
-                  {formatDateTime(r.recorded_at)} {r.weight_kg ? `(${r.weight_kg}kg)` : ''}
-                </option>
-              ))}
-            </select>
+        {/* controles de seleção, ângulo e modo */}
+        <div className="space-y-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-500">
+                Foto 1 (antes)
+              </label>
+              <select
+                value={beforeIndex}
+                onChange={(e) => setBeforeIndex(Number(e.target.value))}
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-200 outline-none transition focus:border-sky-500/50 focus:ring-2 focus:ring-sky-500/20"
+              >
+                {photoRecords.map((r, i) => (
+                  <option key={r.id} value={i} className="bg-slate-900">
+                    {formatDateTime(r.recorded_at)} {r.weight_kg ? `(${r.weight_kg}kg)` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-500">
+                Foto 2 (depois)
+              </label>
+              <select
+                value={afterIndex}
+                onChange={(e) => setAfterIndex(Number(e.target.value))}
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-200 outline-none transition focus:border-sky-500/50 focus:ring-2 focus:ring-sky-500/20"
+              >
+                {photoRecords.map((r, i) => (
+                  <option key={r.id} value={i} className="bg-slate-900">
+                    {formatDateTime(r.recorded_at)} {r.weight_kg ? `(${r.weight_kg}kg)` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-1.5 pt-4 sm:pt-0">
+              <button
+                onClick={() => setViewMode('slider')}
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition ${
+                  viewMode === 'slider'
+                    ? 'bg-sky-500 text-white shadow-sm'
+                    : 'border border-white/10 bg-white/[0.03] text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <ArrowLeftRight className="h-3.5 w-3.5" strokeWidth={2} />
+                Slider
+              </button>
+              <button
+                onClick={() => setViewMode('side-by-side')}
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition ${
+                  viewMode === 'side-by-side'
+                    ? 'bg-sky-500 text-white shadow-sm'
+                    : 'border border-white/10 bg-white/[0.03] text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Columns2 className="h-3.5 w-3.5" strokeWidth={2} />
+                Lado a lado
+              </button>
+            </div>
           </div>
 
-          <div>
-            <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-500">
-              Foto 2 (depois)
-            </label>
-            <select
-              value={afterIndex}
-              onChange={(e) => setAfterIndex(Number(e.target.value))}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-200 outline-none transition focus:border-sky-500/50 focus:ring-2 focus:ring-sky-500/20"
-            >
-              {photoRecords.map((r, i) => (
-                <option key={r.id} value={i} className="bg-slate-900">
-                  {formatDateTime(r.recorded_at)} {r.weight_kg ? `(${r.weight_kg}kg)` : ''}
-                </option>
+          {/* seletor de ângulo de foto */}
+          <div className="flex items-center gap-2 pt-2 border-t border-white/[0.04]">
+            <span className="text-[11px] font-semibold uppercase text-slate-500">Ângulo:</span>
+            <div className="flex gap-1">
+              {(
+                [
+                  { id: 'front', label: 'Frontal' },
+                  { id: 'back', label: 'Costas' },
+                  { id: 'side', label: 'Perfil' },
+                ] as const
+              ).map((ang) => (
+                <button
+                  key={ang.id}
+                  type="button"
+                  onClick={() => setAngle(ang.id)}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                    angle === ang.id
+                      ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                      : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                  }`}
+                >
+                  {ang.label}
+                </button>
               ))}
-            </select>
-          </div>
-
-          <div className="flex justify-end gap-1.5 pt-4 sm:pt-0">
-            <button
-              onClick={() => setViewMode('slider')}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition ${
-                viewMode === 'slider'
-                  ? 'bg-sky-500 text-white shadow-sm'
-                  : 'border border-white/10 bg-white/[0.03] text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <ArrowLeftRight className="h-3.5 w-3.5" strokeWidth={2} />
-              Slider
-            </button>
-            <button
-              onClick={() => setViewMode('side-by-side')}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition ${
-                viewMode === 'side-by-side'
-                  ? 'bg-sky-500 text-white shadow-sm'
-                  : 'border border-white/10 bg-white/[0.03] text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Columns2 className="h-3.5 w-3.5" strokeWidth={2} />
-              Lado a lado
-            </button>
+            </div>
           </div>
         </div>
 
         {/* visualização de fotos */}
         <div className="flex-1 min-h-[300px] max-h-[440px] flex items-center justify-center">
-          {viewMode === 'slider' ? (
+          {!beforePhoto || !afterPhoto ? (
+            <div className="p-8 text-center text-slate-400 text-sm">
+              Fotos para este ângulo não estão disponíveis para ambas as datas.
+            </div>
+          ) : viewMode === 'slider' ? (
             <div
               ref={containerRef}
               onMouseDown={() => setIsDragging(true)}
@@ -226,7 +275,7 @@ export default function PhotoComparisonModal({
             >
               {/* imagem depois (fundo) */}
               <Image
-                src={getFileUrl(afterRec.photo_path!)}
+                src={getFileUrl(afterPhoto)}
                 alt="Depois"
                 fill
                 className="object-contain"
@@ -243,7 +292,7 @@ export default function PhotoComparisonModal({
               >
                 <div className="relative w-[512px] h-[400px] sm:w-[512px]">
                   <Image
-                    src={getFileUrl(beforeRec.photo_path!)}
+                    src={getFileUrl(beforePhoto)}
                     alt="Antes"
                     fill
                     className="object-contain"
@@ -269,7 +318,7 @@ export default function PhotoComparisonModal({
             <div className="grid grid-cols-2 gap-4 w-full h-[360px] sm:h-[400px]">
               <div className="relative h-full rounded-2xl overflow-hidden border border-white/10 bg-black">
                 <Image
-                  src={getFileUrl(beforeRec.photo_path!)}
+                  src={getFileUrl(beforePhoto)}
                   alt="Antes"
                   fill
                   className="object-contain"
@@ -281,7 +330,7 @@ export default function PhotoComparisonModal({
               </div>
               <div className="relative h-full rounded-2xl overflow-hidden border border-white/10 bg-black">
                 <Image
-                  src={getFileUrl(afterRec.photo_path!)}
+                  src={getFileUrl(afterPhoto)}
                   alt="Depois"
                   fill
                   className="object-contain"
@@ -302,7 +351,7 @@ export default function PhotoComparisonModal({
               Variação entre medições ({daysBetween} dias decorridos)
             </span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
             <DeltaCard
               label="Peso"
               beforeVal={beforeRec.weight_kg ? `${beforeRec.weight_kg} kg` : '—'}
@@ -324,6 +373,15 @@ export default function PhotoComparisonModal({
               delta={deltaMuscle ? `${Number(deltaMuscle) > 0 ? '+' : ''}${deltaMuscle} kg` : '—'}
               isPositive={deltaMuscle ? Number(deltaMuscle) >= 0 : null}
             />
+            {deltaWaist && (
+              <DeltaCard
+                label="Cintura"
+                beforeVal={beforeRec.waist_cm ? `${beforeRec.waist_cm} cm` : '—'}
+                afterVal={afterRec.waist_cm ? `${afterRec.waist_cm} cm` : '—'}
+                delta={`${Number(deltaWaist) > 0 ? '+' : ''}${deltaWaist} cm`}
+                isPositive={Number(deltaWaist) <= 0}
+              />
+            )}
             <DeltaCard
               label="IMC"
               beforeVal={beforeImc ? beforeImc.toFixed(1) : '—'}

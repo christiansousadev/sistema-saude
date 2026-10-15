@@ -8,6 +8,7 @@ export interface UserResponse {
   email: string
   is_active: boolean
   is_superadmin: boolean
+  is_totp_enabled?: boolean
   height_cm: number | null
   birth_date: string | null
   created_at: string
@@ -52,6 +53,17 @@ export interface PhysicalResponse {
   body_fat_pct: number | null
   muscle_mass_kg: number | null
   photo_path: string | null
+  photo_back_path?: string | null
+  photo_side_path?: string | null
+  waist_cm?: number | null
+  hip_cm?: number | null
+  chest_cm?: number | null
+  arm_cm?: number | null
+  thigh_cm?: number | null
+  neck_cm?: number | null
+  waist_to_hip_ratio?: number | null
+  waist_to_height_ratio?: number | null
+  cardiovascular_risk?: 'baixo' | 'moderado' | 'elevado' | null
   ai_analysis: Record<string, unknown> | null
   notes: string | null
   created_at: string
@@ -180,9 +192,166 @@ export interface AssistantChatResponse {
   timestamp: string
 }
 
+export interface ExecutiveSummaryResponse {
+  summary_headline: string
+  overall_status: 'otimo' | 'estavel' | 'atencao'
+  physical_insights: string
+  clinical_insights: string
+  habits_insights: string
+  action_plan: string[]
+  generated_at: string
+  disclaimer: string
+}
+
+export interface DoctorQuestionsResponse {
+  questions: string[]
+  abnormal_markers_found: string[]
+  generated_at: string
+  disclaimer: string
+}
+
 // ─── paginação ────────────────────────────────────────────────────────────────
 
 export interface PaginationParams {
   skip?: number
   limit?: number
 }
+
+// ─── hábitos e hidratação ───────────────────────────────────────────────────
+
+export interface DailyHabitResponse {
+  id: number
+  user_id: number
+  date: string
+  water_ml: number
+  water_goal_ml: number
+  pct: number
+  sleep_hours?: number | null
+  sleep_quality?: number | null
+  energy_level?: number | null
+  workout_done?: boolean
+  notes?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface WaterHistoryResponse {
+  items: DailyHabitResponse[]
+  average_ml: number
+  days_logged: number
+  goal_reached_days: number
+}
+
+// ─── evolução e timeline de biomarcadores ────────────────────────────────────
+
+export interface BiomarkerDataPoint {
+  date: string
+  value: number
+  unit: string
+  reference_range: string | null
+  status: 'normal' | 'alto' | 'baixo' | null
+  exam_id: number
+}
+
+export interface BiomarkerTimelineItem {
+  name: string
+  category: string | null
+  unit: string
+  reference_range: string | null
+  latest_value: number | null
+  latest_status: 'normal' | 'alto' | 'baixo' | null
+  data_points: BiomarkerDataPoint[]
+}
+
+export interface BiomarkerTimelineResponse {
+  biomarkers: BiomarkerTimelineItem[]
+}
+
+// ─── medicamentos e suplementos ──────────────────────────────────────────────
+
+export interface MedicationCreate {
+  name: string
+  dosage: string
+  frequency: string
+  category?: string
+  instructions?: string | null
+  is_active?: boolean
+  start_date?: string | null
+  end_date?: string | null
+}
+
+export interface MedicationUpdate {
+  name?: string
+  dosage?: string
+  frequency?: string
+  category?: string
+  instructions?: string | null
+  is_active?: boolean
+  start_date?: string | null
+  end_date?: string | null
+}
+
+export interface MedicationResponse {
+  id: number
+  user_id: number
+  name: string
+  dosage: string
+  frequency: string
+  category: string
+  instructions?: string | null
+  is_active: boolean
+  start_date?: string | null
+  end_date?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface MedicationListResponse {
+  items: MedicationResponse[]
+  total: number
+}
+
+// ─── acesso temporário convidado médico ───────────────────────────────────────
+
+export interface DoctorShareCreate {
+  recipient_name?: string | null
+  expires_in_hours?: number
+  pin?: string | null
+}
+
+export interface DoctorShareResponse {
+  id: number
+  token: string
+  recipient_name: string | null
+  expires_at: string
+  created_at: string
+  access_count: number
+  is_active: boolean
+  has_pin?: boolean
+  share_url?: string | null
+}
+
+export interface DoctorShareCheckResponse {
+  requires_pin: boolean
+  recipient_name: string | null
+  is_valid: boolean
+  expires_at: string
+}
+
+export interface DoctorShareListResponse {
+  items: DoctorShareResponse[]
+  total: number
+}
+
+// ─── autenticação em duas etapas (2fa / totp) ────────────────────────────────
+
+export interface User2FASetupResponse {
+  secret: string
+  otpauth_url: string
+}
+
+export interface User2FAStatusResponse {
+  is_totp_enabled: boolean
+}
+
+

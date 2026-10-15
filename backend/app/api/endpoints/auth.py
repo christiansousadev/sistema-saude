@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from datetime import datetime, timedelta, timezone
@@ -20,7 +21,14 @@ from app.core.security import (
 )
 from app.db.models import RefreshToken, User
 from app.db.session import get_db
-from app.schemas.auth import UserLogin, UserRegister, UserResponse
+from app.schemas.auth import (
+    User2FASetupResponse,
+    User2FAStatusResponse,
+    User2FAVerifyRequest,
+    UserLogin,
+    UserRegister,
+    UserResponse,
+)
 
 logger = logging.getLogger("audit.auth")
 
@@ -153,6 +161,23 @@ def login(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="usuário inativo",
             )
+
+        # 2fa totp verification se ativado
+        if user.is_totp_enabled:
+            if not payload.totp_code:
+                logger.info({"event": "login_totp_required", "user_id": user.id})
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="totp_required",
+                )
+            import pyotp
+            totp = pyotp.TOTP(user.totp_secret or "")
+            if not totp.verify(payload.totp_code, valid_window=1):
+                logger.warning({"event": "login_totp_invalid", "user_id": user.id})
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="codigo 2fa incorreto",
+                )
 
         # M-5a: access token curto (15 min) + refresh token (7 dias)
         access_token = create_short_access_token(user.email)
@@ -325,3 +350,86 @@ def logout(
 @router.get("/me", response_model=UserResponse)
 def me(current_user: CurrentUser):
     return current_user
+
+
+# INICIA CONFIGURACAO DE AUTENTICACAO EM DUAS ETAPAS (TOTP)
+@router.post("/2fa/setup", response_model=User2FASetupResponse)
+def setup_2fa(
+    current_user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+):
+    try:
+        import pyotp
+        secret = pyotp.random_base32()
+        current_user.totp_secret = secret
+        db.commit()
+
+        otpauth_url = pyotp.totp.TOTP(secret).provisioning_uri(
+            name=current_user.email,
+            issuer_name="SistemaSaude",
+        )
+
+        logger.info(json.dumps({"event": "2fa_setup_initiated", "user_id": current_user.id}))
+        return User2FASetupResponse(secret=secret, otpauth_url=otpauth_url)
+    except Exception as exc:
+        db.rollback()
+        logger.error(json.dumps({"event": "2fa_setup_error", "user_id": current_user.id, "error": str(exc)}))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="erro ao iniciar configuracao 2fa",
+        )
+
+
+# CONFIRMA CODIGO TOTP E ATIVA O 2FA
+@router.post("/2fa/verify", response_model=User2FAStatusResponse)
+def verify_and_enable_2fa(
+    payload: User2FAVerifyRequest,
+    current_user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+):
+    if not current_user.totp_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="configuracao 2fa nao iniciada",
+        )
+
+    import pyotp
+    totp = pyotp.TOTP(current_user.totp_secret)
+    if not totp.verify(payload.code, valid_window=1):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="codigo 2fa incorreto",
+        )
+
+    current_user.is_totp_enabled = True
+    db.commit()
+
+    logger.info(json.dumps({"event": "2fa_enabled", "user_id": current_user.id}))
+    return User2FAStatusResponse(is_totp_enabled=True)
+
+
+# DESATIVA AUTENTICACAO EM DUAS ETAPAS
+@router.post("/2fa/disable", response_model=User2FAStatusResponse)
+def disable_2fa(
+    payload: User2FAVerifyRequest,
+    current_user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+):
+    if not current_user.is_totp_enabled or not current_user.totp_secret:
+        return User2FAStatusResponse(is_totp_enabled=False)
+
+    import pyotp
+    totp = pyotp.TOTP(current_user.totp_secret)
+    if not totp.verify(payload.code, valid_window=1):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="codigo 2fa incorreto para desativacao",
+        )
+
+    current_user.is_totp_enabled = False
+    current_user.totp_secret = None
+    db.commit()
+
+    logger.info(json.dumps({"event": "2fa_disabled", "user_id": current_user.id}))
+    return User2FAStatusResponse(is_totp_enabled=False)
+

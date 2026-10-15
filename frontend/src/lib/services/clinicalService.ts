@@ -33,3 +33,9 @@ export async function patchClinicalData(
 export async function deleteClinical(id: number): Promise<void> {
   await api.delete(`/clinical/${id}`)
 }
+
+export async function getBiomarkerTimeline(): Promise<{ biomarkers: import('@/types').BiomarkerTimelineItem[] }> {
+  const { data } = await api.get<{ biomarkers: import('@/types').BiomarkerTimelineItem[] }>('/clinical/biomarkers/timeline')
+  return data
+}
+

@@ -74,3 +74,27 @@ class ClinicalResponse(BaseModel):
 class ClinicalListResponse(BaseModel):
     total: int
     items: list[ClinicalResponse]
+
+
+class BiomarkerDataPoint(BaseModel):
+    date: str
+    value: float
+    unit: str = ""
+    reference_range: str | None = None
+    status: Literal["normal", "alto", "baixo"] | None = None
+    exam_id: int
+
+
+class BiomarkerTimelineItem(BaseModel):
+    name: str
+    category: str | None = None
+    unit: str = ""
+    reference_range: str | None = None
+    latest_value: float | None = None
+    latest_status: Literal["normal", "alto", "baixo"] | None = None
+    data_points: list[BiomarkerDataPoint] = Field(default_factory=list)
+
+
+class BiomarkerTimelineResponse(BaseModel):
+    biomarkers: list[BiomarkerTimelineItem]
+

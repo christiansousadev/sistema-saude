@@ -49,6 +49,37 @@ def _run_ai_analysis(record_id: int, user_id: int, absolute_photo_path: str) -> 
         db.close()
 
 
+def _build_physical_response(record: PhysicalEvolution, height_cm: float | None) -> PhysicalResponse:
+    waist_to_hip: float | None = None
+    waist_to_height: float | None = None
+    risk: str | None = None
+
+    if record.waist_cm and record.hip_cm and record.hip_cm > 0:
+        waist_to_hip = round(record.waist_cm / record.hip_cm, 2)
+
+    if record.waist_cm and height_cm and height_cm > 0:
+        waist_to_height = round(record.waist_cm / height_cm, 2)
+        if waist_to_height < 0.50:
+            risk = "baixo"
+        elif waist_to_height < 0.60:
+            risk = "moderado"
+        else:
+            risk = "elevado"
+    elif waist_to_hip is not None:
+        if waist_to_hip <= 0.85:
+            risk = "baixo"
+        elif waist_to_hip <= 0.95:
+            risk = "moderado"
+        else:
+            risk = "elevado"
+
+    resp = PhysicalResponse.model_validate(record)
+    resp.waist_to_hip_ratio = waist_to_hip
+    resp.waist_to_height_ratio = waist_to_height
+    resp.cardiovascular_risk = risk
+    return resp
+
+
 # CRIA REGISTRO DE EVOLUCAO FISICA COM FOTO — ANALISE IA EXECUTADA EM BACKGROUND (M-9)
 @router.post("/", response_model=PhysicalResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("15/minute")
@@ -61,15 +92,37 @@ def create_physical(
     weight_kg: Annotated[float | None, Form()] = None,
     body_fat_pct: Annotated[float | None, Form()] = None,
     muscle_mass_kg: Annotated[float | None, Form()] = None,
+    waist_cm: Annotated[float | None, Form()] = None,
+    hip_cm: Annotated[float | None, Form()] = None,
+    chest_cm: Annotated[float | None, Form()] = None,
+    arm_cm: Annotated[float | None, Form()] = None,
+    thigh_cm: Annotated[float | None, Form()] = None,
+    neck_cm: Annotated[float | None, Form()] = None,
     notes: Annotated[str | None, Form()] = None,
     photo: Annotated[UploadFile | None, File()] = None,
+    photo_back: Annotated[UploadFile | None, File()] = None,
+    photo_side: Annotated[UploadFile | None, File()] = None,
 ):
     photo_path: str | None = None
+    photo_back_path: str | None = None
+    photo_side_path: str | None = None
 
     try:
         if photo and photo.filename:
             photo_path = storage.save_upload(
                 file=photo,
+                subfolder=f"physical/{current_user.id}",
+                allowed_ext={".jpg", ".jpeg", ".png", ".webp"},
+            )
+        if photo_back and photo_back.filename:
+            photo_back_path = storage.save_upload(
+                file=photo_back,
+                subfolder=f"physical/{current_user.id}",
+                allowed_ext={".jpg", ".jpeg", ".png", ".webp"},
+            )
+        if photo_side and photo_side.filename:
+            photo_side_path = storage.save_upload(
+                file=photo_side,
                 subfolder=f"physical/{current_user.id}",
                 allowed_ext={".jpg", ".jpeg", ".png", ".webp"},
             )
@@ -82,6 +135,14 @@ def create_physical(
             body_fat_pct=body_fat_pct,
             muscle_mass_kg=muscle_mass_kg,
             photo_path=photo_path,
+            photo_back_path=photo_back_path,
+            photo_side_path=photo_side_path,
+            waist_cm=waist_cm,
+            hip_cm=hip_cm,
+            chest_cm=chest_cm,
+            arm_cm=arm_cm,
+            thigh_cm=thigh_cm,
+            neck_cm=neck_cm,
             ai_analysis=None,
             notes=notes,
         )
@@ -101,7 +162,7 @@ def create_physical(
                 "user_id": current_user.id,
             })
 
-        return PhysicalResponse.model_validate(record)
+        return _build_physical_response(record, current_user.height_cm)
 
     except HTTPException:
         raise
@@ -109,6 +170,10 @@ def create_physical(
         db.rollback()
         if photo_path:
             storage.delete_file(photo_path)
+        if photo_back_path:
+            storage.delete_file(photo_back_path)
+        if photo_side_path:
+            storage.delete_file(photo_side_path)
         logger.error({"event": "physical_create_error", "user_id": current_user.id, "error": str(exc)})
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -135,7 +200,7 @@ def list_physical(
         )
         return PhysicalListResponse(
             total=total,
-            items=[PhysicalResponse.model_validate(i) for i in items],
+            items=[_build_physical_response(i, current_user.height_cm) for i in items],
         )
     except Exception as exc:
         logger.error({"event": "physical_list_error", "user_id": current_user.id, "error": str(exc)})
@@ -160,7 +225,7 @@ def get_physical(
         )
         if not record:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="registro não encontrado")
-        return PhysicalResponse.model_validate(record)
+        return _build_physical_response(record, current_user.height_cm)
     except HTTPException:
         raise
     except Exception as exc:
@@ -189,6 +254,10 @@ def delete_physical(
 
         if record.photo_path:
             storage.delete_file(record.photo_path)
+        if record.photo_back_path:
+            storage.delete_file(record.photo_back_path)
+        if record.photo_side_path:
+            storage.delete_file(record.photo_side_path)
 
         db.delete(record)
         db.commit()

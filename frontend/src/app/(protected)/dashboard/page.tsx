@@ -9,7 +9,9 @@ import {
   FileText,
   FlaskConical,
   Scale,
+  Share2,
   Sparkles,
+  Stethoscope,
 } from 'lucide-react'
 
 import { useAuth } from '@/contexts/AuthContext'
@@ -24,6 +26,10 @@ import MetabolicCard from '@/components/ui/MetabolicCard'
 import HealthAssistantModal from '@/components/ui/HealthAssistantModal'
 import HealthScoreRing from '@/components/ui/HealthScoreRing'
 import HydrationWidget from '@/components/ui/HydrationWidget'
+import ExecutiveSummaryCard from '@/components/ui/ExecutiveSummaryCard'
+import DoctorQuestionsModal from '@/components/ui/DoctorQuestionsModal'
+import MedicationWidget from '@/components/ui/MedicationWidget'
+import DoctorShareModal from '@/components/ui/DoctorShareModal'
 
 // recharts é pesado, carrega só no cliente e fora do bundle inicial do dashboard
 const ImcWeightChart = dynamic(() => import('@/components/charts/ImcWeightChart'), {
@@ -169,6 +175,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isAssistantOpen, setIsAssistantOpen] = useState(false)
+  const [doctorQuestionsOpen, setDoctorQuestionsOpen] = useState(false)
+  const [doctorShareOpen, setDoctorShareOpen] = useState(false)
 
   useEffect(() => {
     Promise.allSettled([
@@ -275,14 +283,30 @@ export default function DashboardPage() {
             Olá, {firstName} · {todayLabel}
           </p>
         </div>
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${semaphoreStyle.text} border-white/10 bg-white/[0.04]`}
-        >
-          <span className={`h-1.5 w-1.5 rounded-full ${semaphoreStyle.dot}`} />
-          {semaphore.status === 'normal' || semaphore.status === 'sem_dados'
-            ? 'Tudo em dia'
-            : 'Requer atenção'}
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setDoctorShareOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            <span>Compartilhar Prontuário</span>
+          </button>
+          <button
+            onClick={() => setIsAssistantOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-300 transition hover:bg-sky-500/20"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Assistente IA</span>
+          </button>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${semaphoreStyle.text} border-white/10 bg-white/[0.04]`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${semaphoreStyle.dot}`} />
+            {semaphore.status === 'normal' || semaphore.status === 'sem_dados'
+              ? 'Tudo em dia'
+              : 'Requer atenção'}
+          </span>
+        </div>
       </div>
 
       {error && (
@@ -290,6 +314,9 @@ export default function DashboardPage() {
           {error}
         </div>
       )}
+
+      {/* resumo executivo por IA */}
+      <ExecutiveSummaryCard onOpenQuestions={() => setDoctorQuestionsOpen(true)} />
 
       {/* cards de métricas */}
       <section>
@@ -357,6 +384,9 @@ export default function DashboardPage() {
         </section>
         <HydrationWidget />
       </div>
+
+      {/* medicamentos e suplementação contínua */}
+      <MedicationWidget />
 
       {/* escala IMC */}
       {imc && (
@@ -581,6 +611,18 @@ export default function DashboardPage() {
       <HealthAssistantModal
         isOpen={isAssistantOpen}
         onClose={() => setIsAssistantOpen(false)}
+      />
+
+      {/* Modal de Perguntas para Consulta Médica */}
+      <DoctorQuestionsModal
+        isOpen={doctorQuestionsOpen}
+        onClose={() => setDoctorQuestionsOpen(false)}
+      />
+
+      {/* Modal de Compartilhamento com Médico */}
+      <DoctorShareModal
+        isOpen={doctorShareOpen}
+        onClose={() => setDoctorShareOpen(false)}
       />
     </div>
   )

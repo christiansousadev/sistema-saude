@@ -30,6 +30,7 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    totp_code: str | None = None
 
 
 class TokenResponse(BaseModel):
@@ -47,8 +48,22 @@ class UserResponse(BaseModel):
     email: str
     is_active: bool
     is_superadmin: bool
+    is_totp_enabled: bool = False
     height_cm: float | None
     birth_date: date | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class User2FASetupResponse(BaseModel):
+    secret: str
+    otpauth_url: str
+
+
+class User2FAVerifyRequest(BaseModel):
+    code: str = Field(..., min_length=6, max_length=6)
+
+
+class User2FAStatusResponse(BaseModel):
+    is_totp_enabled: bool

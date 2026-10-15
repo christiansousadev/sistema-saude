@@ -21,3 +21,26 @@ class AssistantChatResponse(BaseModel):
         "educacional, baseadas no histórico registrado. Nunca substitua orientações médicas profissionais."
     )
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ExecutiveSummaryResponse(BaseModel):
+    summary_headline: str
+    overall_status: str
+    physical_insights: str
+    clinical_insights: str
+    habits_insights: str
+    action_plan: list[str] = Field(default_factory=list)
+    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    disclaimer: str = (
+        "Este resumo é gerado com base no seu histórico recente com caráter puramente informativo."
+    )
+
+
+class DoctorQuestionsResponse(BaseModel):
+    questions: list[str]
+    abnormal_markers_found: list[str] = Field(default_factory=list)
+    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    disclaimer: str = (
+        "Sugestões geradas com base nas suas alterações laboratoriais para auxiliar na sua consulta médica."
+    )
+

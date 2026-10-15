@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -37,6 +38,8 @@ class User(Base):
     is_superadmin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
     birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    is_totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -50,6 +53,15 @@ class User(Base):
     )
     clinical_tests: Mapped[list["ClinicalTest"]] = relationship(
         "ClinicalTest", back_populates="user", cascade="all, delete-orphan"
+    )
+    daily_habits: Mapped[list["DailyHabit"]] = relationship(
+        "DailyHabit", back_populates="user", cascade="all, delete-orphan"
+    )
+    medications: Mapped[list["Medication"]] = relationship(
+        "Medication", back_populates="user", cascade="all, delete-orphan"
+    )
+    doctor_shares: Mapped[list["DoctorShareToken"]] = relationship(
+        "DoctorShareToken", back_populates="user", cascade="all, delete-orphan"
     )
 
 
@@ -87,6 +99,14 @@ class PhysicalEvolution(Base):
     body_fat_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     muscle_mass_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
     photo_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    photo_back_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    photo_side_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    waist_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    hip_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    chest_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    arm_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    thigh_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    neck_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
     ai_analysis: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -151,3 +171,65 @@ class RefreshToken(Base):
     revoked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     user: Mapped["User"] = relationship("User")
+
+
+class DailyHabit(Base):
+    __tablename__ = "daily_habits"
+    __table_args__ = (
+        UniqueConstraint("user_id", "date", name="uq_user_daily_habit"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    water_ml: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    water_goal_ml: Mapped[int] = mapped_column(Integer, default=2500, nullable=False)
+    sleep_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sleep_quality: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    energy_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    workout_done: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="daily_habits")
+
+
+class Medication(Base):
+    __tablename__ = "medications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    dosage: Mapped[str] = mapped_column(String(100), nullable=False)
+    frequency: Mapped[str] = mapped_column(String(100), nullable=False)
+    category: Mapped[str] = mapped_column(String(50), default="medicamento", nullable=False)
+    instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="medications")
+
+
+class DoctorShareToken(Base):
+    __tablename__ = "doctor_share_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    recipient_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    pin_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    access_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    user: Mapped["User"] = relationship("User", back_populates="doctor_shares")
+

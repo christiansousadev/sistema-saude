@@ -35,6 +35,12 @@ class PhysicalCreate(BaseModel):
     weight_kg: float | None = Field(default=None, ge=20, le=500)
     body_fat_pct: float | None = Field(default=None, ge=0, le=100)
     muscle_mass_kg: float | None = Field(default=None, ge=0, le=200)
+    waist_cm: float | None = Field(default=None, ge=30, le=250)
+    hip_cm: float | None = Field(default=None, ge=30, le=250)
+    chest_cm: float | None = Field(default=None, ge=30, le=250)
+    arm_cm: float | None = Field(default=None, ge=10, le=100)
+    thigh_cm: float | None = Field(default=None, ge=15, le=150)
+    neck_cm: float | None = Field(default=None, ge=15, le=80)
     notes: str | None = None
 
 
@@ -45,7 +51,18 @@ class PhysicalResponse(BaseModel):
     weight_kg: float | None
     body_fat_pct: float | None
     muscle_mass_kg: float | None
-    photo_path: str | None
+    photo_path: str | None = None
+    photo_back_path: str | None = None
+    photo_side_path: str | None = None
+    waist_cm: float | None = None
+    hip_cm: float | None = None
+    chest_cm: float | None = None
+    arm_cm: float | None = None
+    thigh_cm: float | None = None
+    neck_cm: float | None = None
+    waist_to_hip_ratio: float | None = None
+    waist_to_height_ratio: float | None = None
+    cardiovascular_risk: str | None = None
     # M-8: PhysicalAiAnalysis | None ao invés de dict | None
     ai_analysis: PhysicalAiAnalysis | None = None
     notes: str | None
@@ -57,3 +74,4 @@ class PhysicalResponse(BaseModel):
 class PhysicalListResponse(BaseModel):
     total: int
     items: list[PhysicalResponse]
+

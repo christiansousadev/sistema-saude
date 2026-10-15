@@ -32,6 +32,8 @@ function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [requiresTotp, setRequiresTotp] = useState(false)
+  const [totpCode, setTotpCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -41,12 +43,24 @@ function LoginForm() {
     setLoading(true)
     try {
       // volta para a página que o usuário tentava acessar antes do redirect de login
-      await login(email, password, redirectTo)
-    } catch (err) {
-      setError(extractErrorMessage(err, 'e-mail ou senha incorretos'))
+      await login(email, password, redirectTo, requiresTotp ? totpCode : undefined)
+    } catch (err: unknown) {
+      const msg = extractErrorMessage(err, 'e-mail ou senha incorretos')
+      if (msg === 'totp_required') {
+        setRequiresTotp(true)
+        setError(null)
+      } else {
+        setError(msg)
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleBackToCredentials = () => {
+    setRequiresTotp(false)
+    setTotpCode('')
+    setError(null)
   }
 
   return (
@@ -58,42 +72,66 @@ function LoginForm() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-sky-500 text-slate-950 shadow">
             <Activity className="h-6 w-6" strokeWidth={2.5} />
           </div>
-          <h1 className="text-xl font-bold text-white">Bem-vindo de volta</h1>
-          <p className="text-sm text-slate-400">Acesse seu painel de saúde</p>
+          <h1 className="text-xl font-bold text-white">
+            {requiresTotp ? 'Autenticação em 2 Etapas' : 'Bem-vindo de volta'}
+          </h1>
+          <p className="text-sm text-slate-400">
+            {requiresTotp
+              ? 'Digite o código de 6 dígitos gerado pelo seu aplicativo autenticador.'
+              : 'Acesse seu painel de saúde'}
+          </p>
         </div>
 
         {/* formulário */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="E-mail"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="voce@email.com"
-            autoComplete="email"
-            required
-            autoFocus
-          />
+          {!requiresTotp ? (
+            <>
+              <Input
+                label="E-mail"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="voce@email.com"
+                autoComplete="email"
+                required
+                autoFocus
+              />
 
-          <Input
-            label="Senha"
-            type={showPassword ? 'text' : 'password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            autoComplete="current-password"
-            required
-            suffix={
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="text-slate-500 hover:text-slate-300 transition"
-                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-              >
-                <EyeIcon open={showPassword} />
-              </button>
-            }
-          />
+              <Input
+                label="Senha"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                required
+                suffix={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="text-slate-500 hover:text-slate-300 transition"
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  >
+                    <EyeIcon open={showPassword} />
+                  </button>
+                }
+              />
+            </>
+          ) : (
+            <div className="space-y-3">
+              <Input
+                label="Código de Verificação (6 dígitos)"
+                type="text"
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                autoComplete="one-time-code"
+                required
+                autoFocus
+                className="text-center font-mono text-xl tracking-[0.3em]"
+              />
+            </div>
+          )}
 
           {error && (
             <div
@@ -105,16 +143,28 @@ function LoginForm() {
           )}
 
           <Button type="submit" loading={loading} className="w-full mt-2">
-            Entrar
+            {requiresTotp ? 'Confirmar e Entrar' : 'Entrar'}
           </Button>
+
+          {requiresTotp && (
+            <button
+              type="button"
+              onClick={handleBackToCredentials}
+              className="w-full text-center text-xs text-slate-400 hover:text-slate-200 transition pt-1"
+            >
+              ← Voltar para login com senha
+            </button>
+          )}
         </form>
 
-        <p className="text-center text-sm text-slate-400">
-          Não tem conta?{' '}
-          <Link href="/register" className="font-medium text-sky-400 transition hover:text-sky-300">
-            Criar conta
-          </Link>
-        </p>
+        {!requiresTotp && (
+          <p className="text-center text-sm text-slate-400">
+            Não tem conta?{' '}
+            <Link href="/register" className="font-medium text-sky-400 transition hover:text-sky-300">
+              Criar conta
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   )

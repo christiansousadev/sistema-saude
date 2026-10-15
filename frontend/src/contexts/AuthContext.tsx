@@ -26,9 +26,10 @@ export interface RegisterPayload {
 interface AuthContextValue {
   user: UserResponse | null
   isLoading: boolean
-  login: (email: string, password: string, redirectTo?: string) => Promise<void>
+  login: (email: string, password: string, redirectTo?: string, totpCode?: string) => Promise<void>
   register: (data: RegisterPayload) => Promise<void>
   logout: () => Promise<void>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -109,11 +110,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => stopRefreshTimer()
   }, [startRefreshTimer, stopRefreshTimer])
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const { data: me } = await api.get<UserResponse>('/auth/me')
+      setUser(me)
+    } catch {
+      // silencioso se deslogado
+    }
+  }, [])
+
   const login = useCallback(
-    async (email: string, password: string, redirectTo?: string) => {
+    async (email: string, password: string, redirectTo?: string, totpCode?: string) => {
       // S-1: o servidor define o cookie HttpOnly ss_access_token na resposta
       // não precisamos extrair nem armazenar o token — o browser cuida disso
-      await api.post('/auth/login', { email, password })
+      await api.post('/auth/login', {
+        email,
+        password,
+        totp_code: totpCode || null,
+      })
       // busca os dados do usuário usando o cookie recém-definido
       const { data: me } = await api.get<UserResponse>('/auth/me')
       setUser(me)
@@ -152,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router, stopRefreshTimer])
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

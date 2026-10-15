@@ -2,10 +2,10 @@
 
 > Plataforma web de rastreamento de saúde pessoal — evolução física, exames clínicos com extração automatizada via IA (local ou LLM), comparador visual antes/depois, calculadora metabólica, assistente conversacional e relatório médico consolidado.
 
-![Versão](https://img.shields.io/badge/version-v3.2.0-blue)
+![Versão](https://img.shields.io/badge/version-v3.3.0-blue)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-blue?logo=github-actions)
-![Tests](https://img.shields.io/badge/tests-26%20passed-success)
+![Tests](https://img.shields.io/badge/tests-36%20passed-success)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![Node](https://img.shields.io/badge/node-20.x-339933?logo=node.js&logoColor=white)
@@ -28,6 +28,7 @@
 | React Hook Form | 7.79.0 | Gestão de formulários performática |
 | Zod | 4.4.3 | Validação e inferência de schemas no cliente |
 | Axios | latest | HTTP client com envio de cookies `HttpOnly` (`withCredentials`) |
+| PWA & SW | Native | Suporte a Service Worker offline, Web App Manifest e Push Notifications |
 
 ### Backend
 | Tecnologia | Versão | Função |
@@ -36,7 +37,8 @@
 | Python | 3.12 | Runtime |
 | SQLAlchemy | 2.0.36 | ORM (`Mapped` columns, pool configurável) |
 | Alembic | 1.14.0 | Migrations com suporte a PostgreSQL ENUMs |
-| bcrypt | 4.2.1 | Hashing nativo de senhas |
+| bcrypt | 4.2.1 | Hashing nativo de senhas e PINs de acesso médico |
+| pyotp | 2.10.0 | Autenticação em Duas Etapas (2FA / TOTP) via authenticator app |
 | python-jose | 3.3.0 | JWT HS256 com access tokens de curta duração (15 min) |
 | cryptography | 44.0.0 | Criptografia de chaves de API com Fernet + HKDF-SHA256 |
 | slowapi | 0.1.9 | Rate limiting por IP isolado em `limiter.py` (auth, IA e uploads) |
@@ -45,7 +47,7 @@
 | pdfplumber | 0.11.4 | Extração de texto de laudos em PDF |
 | Pillow | 11.0.0 | Processamento e validação de imagens |
 | OpenAI SDK | 1.57.0 | Suporte a OpenAI/Gemini com timeout resiliente (30s) e retries (2) |
-| Pytest | 8.3.4 | Suíte completa com 26 testes automatizados e banco isolado |
+| Pytest | 8.3.4 | Suíte completa com 36 testes automatizados e banco isolado |
 
 ### Infra & CI/CD
 | Tecnologia | Versão | Função |
@@ -61,34 +63,48 @@
 
 ### Módulos principais
 
-**Módulo Físico & Comparador Antes/Depois**
-- Registra medições semanais (peso, % gordura, massa muscular) com upload seguro de foto.
-- Extração de formulário isolada (`NewMeasurementForm`) e histórico com cards memoizados (`RecordCard`).
-- A IA analisa a imagem de forma assíncrona em background e devolve estimativas corporais no campo `ai_analysis` (JSONB tipado).
-- **Comparador Visual de Fotos (`PhotoComparisonModal`):** Permite selecionar duas fotos do histórico e comparar via **Slider Interativo com divisor arrastável** ou **Lado a Lado**, calculando deltas ($\Delta$ Peso, $\Delta$ % Gordura, $\Delta$ Massa Magra, $\Delta$ IMC e dias decorridos).
+**Módulo Físico, Circunferências & Comparador Multi-Ângulo**
+- Registra medições periódicas (peso, % gordura, massa muscular) e circunferências corporais completas (cintura, quadril, tórax, braço, coxa, pescoço).
+- Cálculo automatizado de biométricas cardiovasculares: **Relação Cintura-Quadril (RCQ)** e **Relação Cintura-Estatura (RCEst)** com categorização de risco cardiovascular (Baixo, Moderado, Alto, Muito Alto).
+- Upload seguro de fotos em múltiplos ângulos (Frente, Costas e Perfil).
+- **Comparador Visual de Fotos (`PhotoComparisonModal`):** Permite selecionar duas avaliações e alternar entre os ângulos (Frente / Costas / Perfil) via **Slider Interativo com divisor arrastável** ou **Lado a Lado**, calculando deltas ($\Delta$ Peso, $\Delta$ % Gordura, $\Delta$ Massa Magra, $\Delta$ Cintura e dias decorridos).
 
 **Calculadora Metabólica (TMB & TDEE)**
 - Calcula a Taxa Metabólica Basal (TMB) através da equação validada de **Mifflin-St Jeor** com base em peso, altura, idade e sexo.
 - Estima o Gasto Energético Total Diário (TDEE) conforme o nível de atividade física (Sedentário a Muito Ativo).
 - Recomenda metas calóricas diárias para **Emagrecimento (-400 kcal)**, **Manutenção** e **Hipertrofia (+300 kcal)**.
 
-**Módulo Clínico & Alertas de Tendências**
-- Upload de laudos laboratoriais (PDF ou imagem) com validação estrita de MIME e leitura em chunks até 10 MB.
-- Suporte a OCR local de imagem com **Tesseract** e texto embutido em PDF com **pdfplumber**.
+**Módulo Clínico & Timeline Longitudinal de Biomarcadores**
+- Upload de laudos laboratoriais (PDF ou imagem) com validação estrita de MIME e leitura em chunks até 10 MB com OCR local (**Tesseract**) ou **pdfplumber**.
+- **Timeline Longitudinal Interativa (`BiomarkerEvolutionChart`):** Gráfico temporal com seletor de analitos (Colesterol, Glicemia, Creatinina, TSH, etc.), áreas sombreadas de referência clínica (mín/máx), detecção de tendências e alertas visuais.
 - **Motor de Tendências (`biomarker_trends`):** Calcula deltas percentuais ($\Delta\%$) entre exames consecutivos e gera alertas preventivos automáticos para variações relevantes (>15%).
 - **Garantia Human-in-the-loop:** Validação com schema tipado `ClinicalDataUpdate` exigindo dados completos antes de confirmar o exame.
 
-**Relatório Médico Consolidado em PDF (`/reports/medical-summary`)**
-- Gera prontuário estruturado consolidando perfil do paciente, evolução física, histórico de exames laboratoriais, tabela de biomarcadores com referências e alertas clínicos ativos.
-- Otimização de consultas SQL evitando carregamento desnecessário do histórico completo.
-- Layout de alta resolução otimizado para impressão e exportação em PDF via `@media print`.
+**Registro Diário de Hábitos & Hidratação**
+- Persistência estruturada no PostgreSQL (`DailyHabit`) com metas personalizadas de ingestão hídrica.
+- Widget com incrementos rápidos (+250ml, +500ml), barra de progresso em tempo real e mini-gráfico de histórico dos últimos 7 dias.
 
-**Assistente de Saúde com IA (`HealthAssistantModal`)**
-- Chat conversacional seguro contextualizado com o histórico recente de saúde do usuário.
-- Suporta LLM configurada pelo usuário (OpenAI / Gemini / Claude / Ollama) via constantes centralizadas em `llm-providers.ts` com fallback para regras locais.
-- Cliente resiliente com timeout de 30s e controle de taxa de requisições.
+**Inteligência Clínica & Farmacologia Integrada**
+- **Resumo Executivo Unificado (`ExecutiveSummaryCard`):** Síntese holística gerada por IA (ou motor de regras local) cruzando evolução física, biomarcadores laboratoriais e consistência de hábitos com plano de ação semanal acionável.
+- **Cruzamento Farmacológico com Biomarcadores (`medication_interactions`):** Motor clínico que correlaciona medicamentos e suplementos ativos com analitos laboratoriais (ex.: Creatina + Creatinina/eGFR, Estatinas + CPK/AST/ALT, Vitamina D + Cálcio, Ferro + Ferritina, Levotiroxina + TSH), emitindo alertas contextuais de monitoramento.
+- **Preparador de Consultas Médicas (`DoctorQuestionsModal`):** Formula dúvidas assertivas priorizando interações medicamentosas e analitos alterados para guiar a consulta médica.
+- **Assistente Conversacional (`HealthAssistantModal`):** Chat conversacional seguro contextualizado com o histórico recente de saúde e medicações.
+
+**Gestão de Medicamentos & Suplementos**
+- Acompanhamento contínuo de prescrições medicamentosas, suplementos alimentares e vitaminas com dosagens, frequências e horários.
+- Controle de status (em uso vs. pausado) com categorização visual.
+
+**Acesso Temporário com PIN para Médicos (`/share/[token]`) & Portabilidade LGPD**
+- **Link de Acesso Médico com Proteção por PIN:** Compartilhamento somente-leitura do prontuário médico com prazos de expiração (24h a 30 dias), contador de acessos, revogação imediata e proteção opcional por PIN (4 a 8 dígitos) com hash `bcrypt`.
+- **Página Pública do Prontuário (`/share/[token]`):** Interface com pré-checagem (`/share/{token}/check`) e tela de desbloqueio por PIN para acesso seguro de médicos convidados.
+- **Portabilidade Total LGPD (Art. 18, V):** Exportação em 1 clique em arquivo compactado `.ZIP` contendo perfil do usuário em JSON, múltiplos arquivos CSV estruturados (físico, clínico, biomarcadores, hábitos, medicamentos) e termo legal de portabilidade.
+
+**PWA & Notificações de Saúde**
+- **Progressive Web App (PWA):** Instalação nativa em smartphone e desktop (`manifest.json` com modo standalone) e Service Worker (`sw.js`) para suporte a carregamento offline.
+- **Web Push Notifications:** Lembretes proativos de hidratação e medicação através de notificações nativas do sistema operacional.
 
 **Módulo de Segurança e Governança**
+- **Autenticação em Duas Etapas (2FA / TOTP):** Proteção via aplicativos autenticadores (Google Authenticator, Authy, Microsoft Authenticator) com segredo base32, geração de QR Code e desafio de 6 dígitos no login.
 - JWT em cookies `HttpOnly; SameSite=Lax` (15 min) + refresh token rotation de 7 dias com detecção e revogação de reuso.
 - Rate limiting com `slowapi`: 10 req/min no login e 15 req/min nos endpoints de IA (`/assistant/chat`, `/clinical/`, `/physical/`).
 - Proteção server-side com Edge Middleware em `/dashboard`, `/physical`, `/clinical`, `/reports`, `/settings` e `/admin` com suporte a `?redirect=` sanitizado.
@@ -104,7 +120,10 @@
 | Método | Rota | Autenticação | Rate Limit | Descrição |
 |---|---|---|---|---|
 | POST | `/api/v1/auth/register` | Pública | — | Registra novo usuário |
-| POST | `/api/v1/auth/login` | Pública | 10/min (IP) | Emite JWT curto (15m) + refresh token (7d) |
+| POST | `/api/v1/auth/login` | Pública | 10/min (IP) | Emite JWT curto (15m) + refresh token (7d) com suporte a desafio 2FA |
+| POST | `/api/v1/auth/2fa/setup` | Cookie | — | Inicia configuração de 2FA gerando segredo e URI QR Code |
+| POST | `/api/v1/auth/2fa/verify` | Cookie | — | Valida código de 6 dígitos e ativa o 2FA na conta |
+| POST | `/api/v1/auth/2fa/disable` | Cookie | — | Desativa o 2FA mediante confirmação com código atual |
 | POST | `/api/v1/auth/refresh` | Cookie `ss_refresh_token` | — | Renova par de tokens (rotation com detecção de reuso) |
 | GET | `/api/v1/auth/me` | Cookie `ss_access_token` | — | Dados do usuário autenticado |
 | POST | `/api/v1/auth/logout` | Cookie | — | Revoga refresh token do banco e limpa cookies |
@@ -113,12 +132,31 @@
 | GET | `/api/v1/physical/{id}` | Cookie | — | Detalhes da medição física (com isolamento IDOR) |
 | DELETE | `/api/v1/physical/{id}` | Cookie | — | Remove medição e arquivo associado |
 | GET | `/api/v1/clinical/` | Cookie (limit max: 100) | — | Lista exames clínicos com paginação |
+| GET | `/api/v1/clinical/biomarkers/timeline` | Cookie | — | Timeline longitudinal agrupada com faixas de referência |
 | POST | `/api/v1/clinical/` | Cookie | 15/min (IP) | Cria exame e executa extração inicial |
 | GET | `/api/v1/clinical/{id}` | Cookie | — | Detalhes do exame clínico (com isolamento IDOR) |
 | PATCH | `/api/v1/clinical/{id}/data` | Cookie | — | Validação manual estrita (`is_validated = True`) |
 | DELETE | `/api/v1/clinical/{id}` | Cookie | — | Remove exame e laudo original |
-| GET | `/api/v1/reports/summary` | Cookie | — | Consolidado médico otimizado para prontuário/PDF |
+| GET | `/api/v1/habits/daily/today` | Cookie | — | Consulta status de hidratação e hábitos do dia |
+| POST | `/api/v1/habits/water/increment` | Cookie | — | Incrementa ingestão de água (+250ml, etc.) |
+| POST | `/api/v1/habits/water/set` | Cookie | — | Define quantidade e meta exata de água |
+| POST | `/api/v1/habits/water/reset` | Cookie | — | Zera consumo de água da data |
+| GET | `/api/v1/habits/water/history` | Cookie | — | Histórico semanal de hidratação e médias |
+| GET | `/api/v1/assistant/executive-summary` | Cookie | — | Resumo executivo unificado física + exames + hábitos |
+| GET | `/api/v1/assistant/doctor-questions` | Cookie | — | Gerador inteligente de dúvidas priorizando farmacologia |
 | POST | `/api/v1/assistant/chat` | Cookie | 15/min (IP) | Chat contextualizado com a assistente de IA |
+| GET | `/api/v1/medications` | Cookie | — | Lista prescrições e suplementação contínua |
+| POST | `/api/v1/medications` | Cookie | — | Cadastra novo medicamento ou suplemento |
+| GET | `/api/v1/medications/{id}` | Cookie | — | Detalhes do medicamento cadastrado |
+| PUT | `/api/v1/medications/{id}` | Cookie | — | Atualiza dosagem, frequência ou status ativo |
+| DELETE | `/api/v1/medications/{id}` | Cookie | — | Remove medicamento do prontuário |
+| POST | `/api/v1/doctor-share/generate` | Cookie | — | Gera token de acesso médico temporário (com PIN opcional) |
+| GET | `/api/v1/doctor-share/tokens` | Cookie | — | Lista links de compartilhamento ativos/expirados |
+| POST | `/api/v1/doctor-share/tokens/{id}/revoke` | Cookie | — | Revoga link de compartilhamento imediatamente |
+| GET | `/api/v1/public/reports/share/{token}/check` | Pública | — | Checa expiração e necessidade de PIN sem expor dados |
+| GET | `/api/v1/public/reports/share/{token}` | Pública (Token ± PIN) | — | Visualização do prontuário médico protegido por PIN |
+| GET | `/api/v1/export/patient-data` | Cookie | — | Exportação completa de dados em .ZIP (LGPD Art. 18, V) |
+| GET | `/api/v1/reports/summary` | Cookie | — | Consolidado médico otimizado para prontuário/PDF |
 | GET | `/api/v1/config/active` | Cookie | — | Configuração de IA ativa do usuário (chave mascarada) |
 | POST | `/api/v1/config/` | Cookie | — | Salva/atualiza configuração de IA (criptografa key) |
 | DELETE | `/api/v1/config/{id}` | Cookie | — | Remove configuração de IA do usuário |

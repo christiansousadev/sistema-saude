@@ -20,11 +20,20 @@ import Textarea from '@/components/ui/Textarea'
 
 // ─── badge translúcida de métrica ─────────────────────────────────────────────
 
-function MetricBadge({ label, value, accent }: { label: string; value: string; accent: 'sky' | 'emerald' | 'amber' }) {
+function MetricBadge({
+  label,
+  value,
+  accent,
+}: {
+  label: string
+  value: string
+  accent: 'sky' | 'emerald' | 'amber' | 'rose'
+}) {
   const styles = {
     sky: 'border-sky-500/20 bg-sky-500/10 text-sky-300',
     emerald: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300',
     amber: 'border-amber-500/20 bg-amber-500/10 text-amber-300',
+    rose: 'border-rose-500/20 bg-rose-500/10 text-rose-300',
   }
   return (
     <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${styles[accent]}`}>
@@ -70,22 +79,46 @@ const RecordCard = memo(function RecordCard({
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-slate-900/60 p-4 shadow-sm">
       <div className="flex items-start gap-3">
-        {/* thumbnail */}
-        {record.photo_path ? (
-          <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl">
-            <Image
-              src={getFileUrl(record.photo_path)}
-              alt="foto"
-              fill
-              className="object-cover"
-              sizes="64px"
-            />
-          </div>
-        ) : (
-          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-white/[0.04]">
-            <ImageOff className="h-6 w-6 text-slate-600" strokeWidth={1.5} />
-          </div>
-        )}
+        {/* thumbnail principal e adicionais */}
+        <div className="flex gap-1.5 flex-shrink-0">
+          {record.photo_path ? (
+            <div className="relative h-16 w-16 overflow-hidden rounded-xl">
+              <Image
+                src={getFileUrl(record.photo_path)}
+                alt="foto frontal"
+                fill
+                className="object-cover"
+                sizes="64px"
+              />
+            </div>
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-white/[0.04]">
+              <ImageOff className="h-6 w-6 text-slate-600" strokeWidth={1.5} />
+            </div>
+          )}
+          {record.photo_back_path && (
+            <div className="relative h-16 w-12 overflow-hidden rounded-xl border border-white/10 hidden sm:block" title="Costas">
+              <Image
+                src={getFileUrl(record.photo_back_path)}
+                alt="foto costas"
+                fill
+                className="object-cover"
+                sizes="48px"
+              />
+            </div>
+          )}
+          {record.photo_side_path && (
+            <div className="relative h-16 w-12 overflow-hidden rounded-xl border border-white/10 hidden sm:block" title="Perfil">
+              <Image
+                src={getFileUrl(record.photo_side_path)}
+                alt="foto perfil"
+                fill
+                className="object-cover"
+                sizes="48px"
+              />
+            </div>
+          )}
+        </div>
 
         {/* métricas */}
         <div className="min-w-0 flex-1">
@@ -99,6 +132,33 @@ const RecordCard = memo(function RecordCard({
             )}
             {record.muscle_mass_kg && (
               <MetricBadge label="Músculo" value={`${record.muscle_mass_kg.toFixed(1)} kg`} accent="emerald" />
+            )}
+            {record.waist_cm && (
+              <MetricBadge label="Cintura" value={`${record.waist_cm.toFixed(1)} cm`} accent="sky" />
+            )}
+            {record.hip_cm && (
+              <MetricBadge label="Quadril" value={`${record.hip_cm.toFixed(1)} cm`} accent="sky" />
+            )}
+            {record.waist_to_hip_ratio && (
+              <MetricBadge
+                label="RCQ"
+                value={`${record.waist_to_hip_ratio.toFixed(2)}`}
+                accent={record.cardiovascular_risk === 'elevado' ? 'rose' : record.cardiovascular_risk === 'moderado' ? 'amber' : 'emerald'}
+              />
+            )}
+            {record.waist_to_height_ratio && (
+              <MetricBadge
+                label="RCEst"
+                value={`${record.waist_to_height_ratio.toFixed(2)}`}
+                accent={record.cardiovascular_risk === 'elevado' ? 'rose' : record.cardiovascular_risk === 'moderado' ? 'amber' : 'emerald'}
+              />
+            )}
+            {record.cardiovascular_risk && (
+              <MetricBadge
+                label="Risco"
+                value={record.cardiovascular_risk}
+                accent={record.cardiovascular_risk === 'elevado' ? 'rose' : record.cardiovascular_risk === 'moderado' ? 'amber' : 'emerald'}
+              />
             )}
           </div>
         </div>
@@ -161,8 +221,18 @@ function NewMeasurementForm({
   const [weightKg, setWeightKg] = useState('')
   const [bodyFatPct, setBodyFatPct] = useState('')
   const [muscleMassKg, setMuscleMassKg] = useState('')
+  const [waistCm, setWaistCm] = useState('')
+  const [hipCm, setHipCm] = useState('')
+  const [chestCm, setChestCm] = useState('')
+  const [armCm, setArmCm] = useState('')
+  const [thighCm, setThighCm] = useState('')
+  const [neckCm, setNeckCm] = useState('')
   const [notes, setNotes] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
+  const [photoBack, setPhotoBack] = useState<File | null>(null)
+  const [photoSide, setPhotoSide] = useState<File | null>(null)
+  const [showCircumferences, setShowCircumferences] = useState(false)
+  const [showExtraPhotos, setShowExtraPhotos] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [lastResult, setLastResult] = useState<PhysicalResponse | null>(null)
@@ -178,8 +248,16 @@ function NewMeasurementForm({
     if (weightKg) fd.append('weight_kg', weightKg)
     if (bodyFatPct) fd.append('body_fat_pct', bodyFatPct)
     if (muscleMassKg) fd.append('muscle_mass_kg', muscleMassKg)
+    if (waistCm) fd.append('waist_cm', waistCm)
+    if (hipCm) fd.append('hip_cm', hipCm)
+    if (chestCm) fd.append('chest_cm', chestCm)
+    if (armCm) fd.append('arm_cm', armCm)
+    if (thighCm) fd.append('thigh_cm', thighCm)
+    if (neckCm) fd.append('neck_cm', neckCm)
     if (notes) fd.append('notes', notes)
     if (photo) fd.append('photo', photo)
+    if (photoBack) fd.append('photo_back', photoBack)
+    if (photoSide) fd.append('photo_side', photoSide)
 
     try {
       const created = await physicalService.createPhysical(fd)
@@ -188,8 +266,16 @@ function NewMeasurementForm({
       setWeightKg('')
       setBodyFatPct('')
       setMuscleMassKg('')
+      setWaistCm('')
+      setHipCm('')
+      setChestCm('')
+      setArmCm('')
+      setThighCm('')
+      setNeckCm('')
       setNotes('')
       setPhoto(null)
+      setPhotoBack(null)
+      setPhotoSide(null)
     } catch (err) {
       setFormError(extractErrorMessage(err))
     } finally {
@@ -206,12 +292,41 @@ function NewMeasurementForm({
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <FileUpload
-          label="Foto (opcional)"
+          label="Foto frontal (opcional)"
           accept=".jpg,.jpeg,.png,.webp"
           maxMB={10}
           preview
           onChange={setPhoto}
         />
+
+        {/* fotos adicionais com toggle */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowExtraPhotos(!showExtraPhotos)}
+            className="text-xs font-medium text-sky-400 hover:text-sky-300 transition flex items-center gap-1"
+          >
+            {showExtraPhotos ? '− Ocultar fotos adicionais' : '+ Adicionar fotos (Costas e Perfil)'}
+          </button>
+          {showExtraPhotos && (
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+              <FileUpload
+                label="Foto de Costas"
+                accept=".jpg,.jpeg,.png,.webp"
+                maxMB={10}
+                preview
+                onChange={setPhotoBack}
+              />
+              <FileUpload
+                label="Foto de Perfil"
+                accept=".jpg,.jpeg,.png,.webp"
+                maxMB={10}
+                preview
+                onChange={setPhotoSide}
+              />
+            </div>
+          )}
+        </div>
 
         <Input
           label="Data e hora"
@@ -255,6 +370,87 @@ function NewMeasurementForm({
             step={0.1}
             helpText="kg"
           />
+        </div>
+
+        {/* secao expansivel de circunferencias */}
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Circunferências Corporais
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowCircumferences(!showCircumferences)}
+              className="text-xs font-medium text-sky-400 hover:text-sky-300"
+            >
+              {showCircumferences ? 'Ocultar' : 'Expandir (Cintura, Quadril...)'}
+            </button>
+          </div>
+
+          {showCircumferences && (
+            <div className="mt-3 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Cintura"
+                  type="number"
+                  value={waistCm}
+                  onChange={(e) => setWaistCm(e.target.value)}
+                  placeholder="82.0"
+                  step={0.5}
+                  helpText="cm"
+                />
+                <Input
+                  label="Quadril"
+                  type="number"
+                  value={hipCm}
+                  onChange={(e) => setHipCm(e.target.value)}
+                  placeholder="98.0"
+                  step={0.5}
+                  helpText="cm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Tórax"
+                  type="number"
+                  value={chestCm}
+                  onChange={(e) => setChestCm(e.target.value)}
+                  placeholder="100.0"
+                  step={0.5}
+                  helpText="cm"
+                />
+                <Input
+                  label="Braço"
+                  type="number"
+                  value={armCm}
+                  onChange={(e) => setArmCm(e.target.value)}
+                  placeholder="36.0"
+                  step={0.5}
+                  helpText="cm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Coxa"
+                  type="number"
+                  value={thighCm}
+                  onChange={(e) => setThighCm(e.target.value)}
+                  placeholder="58.0"
+                  step={0.5}
+                  helpText="cm"
+                />
+                <Input
+                  label="Pescoço"
+                  type="number"
+                  value={neckCm}
+                  onChange={(e) => setNeckCm(e.target.value)}
+                  placeholder="38.0"
+                  step={0.5}
+                  helpText="cm"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <Textarea

@@ -24,8 +24,18 @@ import { usePagination } from '@/lib/hooks/usePagination'
 import Button from '@/components/ui/Button'
 import FileUpload from '@/components/ui/FileUpload'
 import Input from '@/components/ui/Input'
+import dynamic from 'next/dynamic'
 import Spinner from '@/components/ui/Spinner'
 import Textarea from '@/components/ui/Textarea'
+import { Skeleton } from '@/components/ui/Skeleton'
+
+const BiomarkerEvolutionChart = dynamic(
+  () => import('@/components/charts/BiomarkerEvolutionChart'),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-64 w-full rounded-2xl" />,
+  }
+)
 
 type MarkerEntry = { name: string; value: string | number; unit: string; status: string | null }
 type StatusFilter = 'todos' | 'alertas' | 'normais'
@@ -477,6 +487,8 @@ export default function ClinicalPage() {
           Envie seu PDF ou foto do laudo. A IA tentará extrair os marcadores automaticamente.
         </p>
       </div>
+
+      <BiomarkerEvolutionChart />
 
       <div className="grid gap-8 lg:grid-cols-[380px_1fr]">
         {/* formulário de envio */}

@@ -2,18 +2,22 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Dumbbell, FlaskConical, Printer, TriangleAlert } from 'lucide-react'
+import { ArrowLeft, Dumbbell, FlaskConical, Printer, Share2, Stethoscope, TriangleAlert } from 'lucide-react'
 import { getMedicalSummary } from '@/lib/services/reportService'
 import type { MedicalSummaryResponse } from '@/types'
 import { extractErrorMessage } from '@/lib/api'
 import { formatDateTime, formatDate } from '@/lib/utils'
 import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
+import DoctorQuestionsModal from '@/components/ui/DoctorQuestionsModal'
+import DoctorShareModal from '@/components/ui/DoctorShareModal'
 
 export default function MedicalSummaryPage() {
   const [report, setReport] = useState<MedicalSummaryResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [doctorQuestionsOpen, setDoctorQuestionsOpen] = useState(false)
+  const [doctorShareOpen, setDoctorShareOpen] = useState(false)
 
   useEffect(() => {
     getMedicalSummary()
@@ -62,10 +66,28 @@ export default function MedicalSummaryPage() {
             Relatório de saúde consolidado
           </h1>
         </div>
-        <Button onClick={() => window.print()} className="flex items-center gap-2 shadow-md">
-          <Printer className="h-4 w-4" strokeWidth={2} />
-          Imprimir / exportar PDF
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            onClick={() => setDoctorShareOpen(true)}
+            className="flex items-center gap-2 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
+          >
+            <Share2 className="h-4 w-4" strokeWidth={2} />
+            Compartilhar c/ Médico
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => setDoctorQuestionsOpen(true)}
+            className="flex items-center gap-2 border-sky-500/30 text-sky-300 hover:bg-sky-500/10"
+          >
+            <Stethoscope className="h-4 w-4" strokeWidth={2} />
+            Perguntas p/ Consulta
+          </Button>
+          <Button onClick={() => window.print()} className="flex items-center gap-2 shadow-md">
+            <Printer className="h-4 w-4" strokeWidth={2} />
+            Imprimir / exportar PDF
+          </Button>
+        </div>
       </div>
 
       {/* documento médico impresso (prontuário consolidado) */}
@@ -276,6 +298,16 @@ export default function MedicalSummaryPage() {
           </div>
         </div>
       </div>
+
+      <DoctorQuestionsModal
+        isOpen={doctorQuestionsOpen}
+        onClose={() => setDoctorQuestionsOpen(false)}
+      />
+
+      <DoctorShareModal
+        isOpen={doctorShareOpen}
+        onClose={() => setDoctorShareOpen(false)}
+      />
     </div>
   )
 }
